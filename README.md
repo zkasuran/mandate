@@ -171,8 +171,27 @@ settle disputes with money rather than a committee:
    griefing.
 
 ```bash
-cd contracts && forge test        # 24 passed
+cd contracts && forge test        # 24 passed, 5 skipped (the fork suite)
 ```
+
+**It also runs against real chain state.** The unit suite uses a mock token,
+which proves the logic but not that it survives a token somebody else wrote on a
+chain somebody else runs. So the same lifecycle runs on a fork of Robinhood
+Chain with **the real USDG contract** as the bond asset:
+
+```bash
+anvil --fork-url https://rpc.mainnet.chain.robinhood.com
+cd contracts && forge test --match-path test/ForkLifecycle.t.sol \
+    --fork-url http://127.0.0.1:8545     # 5 passed
+```
+
+Publish, bond 1,000 USDG, take on 20,000 of follower exposure, have a challenger
+stake 50 USDG on a claim, let the window close, then a stranger executes it and
+the harmed followers hold **375 and 125 USDG** split by exposure, with the
+challenger made whole. Every transfer through USDG's own code.
+
+Offline those five report as **skipped**, not passed. A test that returns early
+and still says pass is a green tick for work that never ran.
 
 Launched through Bankr on Robinhood Chain, where creator trading fees pay for the agent's
 own compute. Deliberately not: governance voting over which mandates are allowed, staking
@@ -231,7 +250,8 @@ Verified live, re-checkable by anyone:
 - 12 entry quotes and 6 protective exits, all signable EIP-712, against the live venue
 - Track records rebuilt from raw Uniswap `Swap` logs
 - Browser and Python hash a mandate to the same id, gated in CI
-- 74 offline Python tests, 24 Solidity tests including fuzz
+- 74 offline Python tests, 24 Solidity unit tests including fuzz
+- The bond lifecycle executed against the real USDG contract on a Robinhood Chain fork
 
 Not verified, stated rather than implied:
 

@@ -118,7 +118,7 @@ footer{color:var(--faint);font-size:12px;padding:28px 24px;border-top:1px solid 
   <div id="ubody"><div class="empty">resolving against Robinhood Chain…</div></div>
   <h3 class="mid">Rejected lookalikes</h3>
   <p class="lede">These answered to a ticker they are not. <strong>NVDAx3L is a 3x leveraged
-  token</strong> deep enough to fool a resolver that ranks by liquidity, and one symbol is a
+  token</strong> deep enough to fool a resolver that ranks by liquidity. One symbol is a
   comma-joined list of thousands of tickers built to match every search ever run against it.</p>
   <div id="imps"><div class="empty">…</div></div>
 </section>
@@ -150,7 +150,7 @@ footer{color:var(--faint);font-size:12px;padding:28px 24px;border-top:1px solid 
 </section>
 
 <section id="run">
-  <p class="lede">Eight gates, in order. Any one can refuse, and
+  <p class="lede">Nine gates, in order. Any one can refuse, because
   <strong>a refusal is a result</strong>. This is the whole path an agent walks before it is
   allowed to act in someone else's name.</p>
   <div class="row">
@@ -205,17 +205,17 @@ footer{color:var(--faint);font-size:12px;padding:28px 24px;border-top:1px solid 
 
 <section id="about">
   <div class="note"><b>The problem.</b> Copy trading runs on numbers you have to take someone's
-  word for. The platform holds your money, the star trader reports their own returns, and you
+  word for. The platform holds your money, the star trader reports their own returns, you
   find out afterwards.</div>
   <div class="note"><b>The fix.</b> The strategy is a hash. The follower keeps their own wallet
-  under revocable delegation. Every fill is public, so returns are derived rather than claimed,
-  and a strategist cannot inflate a number anyone can recompute.</div>
+  under revocable delegation. Every fill is public, so returns are derived rather than claimed.
+  A strategist cannot inflate a number anyone can recompute.</div>
   <div class="note"><b>What nobody handles.</b> Tokenized equity tickers are squatted. Liquidity
   is fragmented and salted with pools that quote a price and hold nothing. The underlying
   equity trades six and a half hours a day while the token trades all day. Mandate refuses on
   all three rather than filling badly.</div>
   <div class="note"><b>The token.</b> $MANDATE is the bond a strategist posts to take
-  followers, and it is slashable to the followers who were harmed when the published rules are
+  followers. It is slashable to the followers who were harmed when the published rules are
   broken. Launched through Bankr on Robinhood Chain, where creator trading fees pay for the
   agent's own compute.</div>
   <h3 class="mid">Check any of it yourself</h3>
@@ -404,7 +404,7 @@ function renderMandates(){
       `  |  cover ${m.rules.execution.min_depth_multiple}x  |  ${m.rules.execution.require_market_hours?'market hours only':'24/7'}`+
       `  |  fee ${m.rules.fee_bps}bps`));
     w.appendChild(d);
-    const o=el('option',null,m.name+' — '+m.mandate_id.slice(0,20)+'…');o.value=m.mandate_id;sel.appendChild(o);
+    const o=el('option',null,m.name+' · '+m.mandate_id.slice(0,20)+'…');o.value=m.mandate_id;sel.appendChild(o);
   });
 }
 
@@ -476,7 +476,7 @@ $('#r_go').onclick=async()=>{
         hasTypedData:!!q.evm?.orderTypedData,needsApproval:!!q.evm?.approveTx,at:Date.now()+fills.length});
     }
     push('quote',fills.length>0,`${fills.length} clips quoted and gated, ${refused.length} refused`);
-    push('execute',false,'dry run: quotes are real and signable, nothing was sent. Broadcasting needs a signature from the follower wallet, and this page holds no key.');
+    push('execute',false,'dry run: quotes are real and signable, nothing was sent. Broadcasting needs a signature from the follower wallet. This page holds no key.');
 
     if(fills.length){
       FILLS.push(...fills);save();

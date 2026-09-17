@@ -2,7 +2,7 @@
 """Depth truth for tokenized equities.
 
 The quoted tick of a Uniswap pool is not a price you can trade at. On Base,
-tokenized equity pools include ones that are initialized, carry a tick, and
+tokenized equity pools include ones that are initialized, carry a tick, then
 hold nothing. Routing by "a pool exists" or by fee tier walks straight into
 them.
 

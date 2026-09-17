@@ -103,7 +103,7 @@ _ETH_USD_CACHE: list = []
 def eth_usd_price() -> float:
     """ETH priced in USDC, read off the deepest WETH/USDC pool on Base.
 
-    A WETH-quoted pool's depth means nothing in dollars without this, and a
+    A WETH-quoted pool's depth means nothing in dollars without this. A
     hardcoded ETH price is the kind of stale constant that silently misprices
     every downstream check.
     """

@@ -30,7 +30,7 @@ class TestTickerResolution(unittest.TestCase):
 
     def test_picks_the_exact_symbol_over_a_deep_lookalike(self):
         # NVDAx3L is a 3x leveraged token holding $407,605. A resolver that
-        # ranks by liquidity alone, or fuzzy-matches, hands over leverage the
+        # ranks by liquidity alone, else fuzzy-matches, hands over leverage the
         # follower never asked for.
         rows = [asset("NVDAx3L", "0xf51f", 407_605, 513),
                 asset("NVDA", NVDA, 2_655_568, 166_218)]

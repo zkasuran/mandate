@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Read every address this project uses off Base, live, and refuse the bad ones.
+"""Read every address this project uses off Base, live, then refuse the bad ones.
 
 Run this before trusting anything the repo says about an address. It exists
-because a documented example address turned out to carry no code on Base, and
-a published address that nobody re-checked is the cheapest kind of wrong.
+because a documented example address turned out to carry no code on Base. A
+published address that nobody re-checked is the cheapest kind of wrong.
 """
 import sys
 import os

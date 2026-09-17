@@ -10,7 +10,7 @@ strategist from publishing disciplined rules to attract followers and then
 trading outside them. Discipline is the product. Discipline needs a cost.
 
 So: publishing a mandate that accepts followers requires bonding $MANDATE. The
-bond is slashable, and slashing is not a governance vote or a committee. It is
+bond is slashable. Slashing is not a governance vote nor a committee. It is
 arithmetic, because two facts are already true:
 
   1. the mandate's rules are fixed at a hash, so what was promised is not in
@@ -18,14 +18,14 @@ arithmetic, because two facts are already true:
   2. every fill is public, so what happened is not in dispute
 
 Which makes "did this strategist keep their own rules" a decidable question.
-`audit()` answers it, and every violation it returns names the rule, the fill
-and the amount by which the rule was broken.
+`audit()` answers it. Every violation it returns names the rule, the fill
+plus the amount by which the rule was broken.
 
 Slashed bond goes to the followers who were harmed, in proportion to the size
 they had at risk. Not to a treasury, because the harmed party is the follower.
 
 Distribution and funding run through Bankr on Robinhood Chain: the launch is
-where the token comes from, and the creator trading fees are what pay for the
+where the token comes from. Creator trading fees are what pay for the
 agent's compute. That is the same loop the platform is built around, used for
 the thing it is actually good at.
 """

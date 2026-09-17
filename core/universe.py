@@ -8,7 +8,7 @@ squatters alongside the real asset:
   NVDA  ->  NVDAx3L, a 3x leveraged token holding $407,605 of liquidity
   AAPL  ->  AAPLCAT ($86,717, 1,127 holders), AAPLHOOD
   TSLA  ->  TSLAHOOD, TSLATEST, TITSLA
-  SPY   ->  SPDR, SPY6900, and a token whose symbol is just "I"
+  SPY   ->  SPDR, SPY6900, plus a token whose symbol is just "I"
 
 and one token whose symbol is a comma-joined list of several thousand tickers,
 so it matches every ticker search that has ever been run against it.

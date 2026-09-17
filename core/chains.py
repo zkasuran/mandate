@@ -2,7 +2,7 @@
 """Chain configuration. Two networks matter for tokenized equities.
 
 Base carries the B20 equities and Uniswap v3. Robinhood Chain carries the
-issuer's own tokenized stocks and ETFs, and that is where the real depth sits:
+issuer's own tokenized stocks and ETFs. That is where the real depth sits:
 NVDA alone shows more 24h volume there than every B20 pool on Base combined.
 
 Nothing here is trusted until it is read off the chain. `chain_id` is checked

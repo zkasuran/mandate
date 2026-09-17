@@ -3,7 +3,7 @@
 
 The product is non-custodial by construction. A follower keeps their own
 embedded wallet and grants this server scoped, revocable signing rights. That
-is Dynamic's delegated-access pattern, and it is the reason a follower can
+is Dynamic's delegated-access pattern. It is the reason a follower can
 leave at any time without asking anyone.
 
 Three adapters, one interface:
@@ -209,9 +209,9 @@ class DynamicServerWallet(Wallet):
 class DynamicDelegatedWallet(Wallet):
     """A follower's own wallet, signed for under revocable delegation.
 
-    This is the product's real posture: the follower never transfers custody,
-    and revoking delegation in Dynamic ends the agent's authority immediately
-    without this service being involved.
+    This is the product's real posture: the follower never transfers custody.
+    Revoking delegation in Dynamic ends the agent's authority immediately
+    with this service never involved.
 
     Follows the documented delegated surface:
         decrypt_delegated_webhook_data(private_key_pem, encrypted_delegated_share,

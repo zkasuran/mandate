@@ -8,12 +8,12 @@ behind. Filling a follower's order into that window is how a strategy books a
 loss it never chose.
 
 This module does not pretend to know the underlying's price. It knows when the
-underlying is trading, which is a calendar fact, and it refuses to certify a
+underlying is trading, which is a calendar fact. It refuses to certify a
 mark taken while the market is shut. Refusing to certify is the honest output.
 
 US equity regular session: 09:30 to 16:00 America/New_York, Monday to Friday,
-excluding exchange holidays. The 2026 NYSE holiday calendar is listed below and
-is the one thing here that has to be updated by hand each year.
+excluding exchange holidays. The 2026 NYSE holiday calendar is listed below.
+It is the one thing here that has to be updated by hand each year.
 """
 from __future__ import annotations
 

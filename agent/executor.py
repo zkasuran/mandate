@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """The executor: one run of one mandate for one subscribed follower.
 
-The order of the gates is the product. Each one can refuse, and a refusal is
+The order of the gates is the product. Each one can refuse. A refusal is
 returned with the reason attached so a follower can read why their agent chose
 not to trade in their name.
 
@@ -12,7 +12,8 @@ not to trade in their name.
   5. plan             what clips does the mandate call for at this size
   6. quote            what would each clip actually fill at, on the venue
   7. gates            slippage ceiling and depth cover
-  8. execute          sign and send, or refuse and say why
+  8. protect          place the stop and take-profit the mandate promised
+  9. execute          sign and send, else refuse and say why
 
 Steps 4 and 6 are where the two integrations meet. Ticker verification and
 execution go through Flash, which aggregates venues and carries the advanced
@@ -25,7 +26,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 
-from core import basis, bond, book, chains, fees, flash, orders, spec
+from core import basis, bond, book, chains, exits, fees, flash, orders, spec
 
 
 @dataclass
@@ -51,6 +52,7 @@ class Run:
     refusals: list
     fee_summary: dict
     warnings: list
+    exits: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -63,6 +65,7 @@ class Run:
             "refusals": self.refusals,
             "fees": self.fee_summary,
             "warnings": self.warnings,
+            "exits": self.exits,
         }
 
 
@@ -238,26 +241,54 @@ class Executor:
         if not built:
             return done(refusals=refused, warn=plan.warnings)
 
-        # 8. execute
+        book.record_fills(built)
+
+        # 8. protect what was just opened. A planned stop that is never placed
+        # is not a stop, so the position is read back from the book and the
+        # exits are quoted against the basis it actually has.
+        folio = book.portfolio(follower)
+        holdings = {h["ticker"]: {"quantity": h["quantity"],
+                                  "cost_basis": h["cost_basis"]}
+                    for h in folio["holdings"]}
+        eplan = exits.derive(mandate, holdings, self.universe, self.chain.key)
+        eplan.follower = follower
+        if eplan.exits:
+            eplan = exits.place(eplan, self.chain, follower,
+                                max_slippage_bps=max(100, mandate.execution.max_slippage_bps))
+        cover = exits.coverage(eplan, holdings)
+        steps.append(Step(
+            "protect", cover["fully_protected"],
+            (f"{eplan.placed}/{len(eplan.exits)} protective exits resting at the venue, "
+             f"{cover['coverage_pct']:.0f}% of legs carry a live stop"
+             + ("" if cover["fully_protected"]
+                else f"; exposed: {', '.join(cover['legs_with_no_stop'])}")),
+            {"plan": eplan.to_dict(), "coverage": cover}))
+
+        # 9. execute
         if self.broadcast:
             detail = ("broadcast requires a signed userSignature from the "
                       "follower's wallet; no key is held by this service")
         else:
-            detail = ("dry run: quotes are real and signable, nothing was sent")
+            detail = "dry run: quotes are real and signable, nothing was sent"
         steps.append(Step("execute", False, detail,
-                          {"signable": sum(1 for b in built if b["has_typed_data"])}))
+                          {"entries_signable": sum(1 for b in built if b["has_typed_data"]),
+                           "exits_signable": sum(1 for e in eplan.exits if e.has_typed_data)}))
 
-        book.record_fills(built)
         accrued = fees.accrue([{"quote_in": int(b["spend_usd"] * 1e6)}
                                for b in built], mandate.fee_bps)
-        warnings = list(plan.warnings)
+        warnings = list(plan.warnings) + eplan.warnings
+        if not cover["fully_protected"]:
+            warnings.append(
+                "position is only partially protected: "
+                f"{', '.join(cover['legs_with_no_stop'])} has no live stop")
         if refused:
             warnings.append(f"{len(refused)} clips refused at the venue")
         if not session.open:
             warnings.append("marks uncertified: the underlying market is closed")
 
         run = Run(mandate.mandate_id(), sub_id, follower, False, steps,
-                  built, refused, accrued, warnings)
+                  built, refused, accrued, warnings,
+                  exits={"plan": eplan.to_dict(), "coverage": cover})
         book.record_run(sub_id, mandate.mandate_id(), {
             "fills": len(built), "refused": len(refused),
             "volume_usd": sum(b["spend_usd"] for b in built),

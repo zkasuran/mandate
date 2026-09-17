@@ -14,7 +14,7 @@ Accounting rules, stated so a reader can check them rather than trust them:
   * fees paid to the AMM are already inside the fill price, so they are not
     subtracted twice
   * a mark taken while the underlying equity market is shut is carried as
-    uncertified, and the record says so rather than quietly booking it
+    uncertified, with the record saying so rather than quietly booking it
 
 What this does not do: it cannot see trades routed through an aggregator that
 settles somewhere other than the pools it watches. Coverage is stated on every

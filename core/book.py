@@ -3,13 +3,13 @@
 
 This is the product's memory. A mandate on its own is a document. The book is
 what makes it a thing people use: a strategist publishes, followers subscribe
-with a size, the agent runs on a cadence, and every fill lands here so a
+with a size, the agent runs on a cadence, then every fill lands here so a
 follower can see what was done in their name and why.
 
 Two rules hold the whole design together:
 
   Funds never move through this service. A subscription records authority and
-  size, nothing else. Custody stays with the follower, and the record here is
+  size, nothing else. Custody stays with the follower. The record here is
   an account of decisions rather than a balance we hold.
 
   Every number a follower sees is traceable to a decision or a fill. Nothing is
@@ -17,7 +17,7 @@ Two rules hold the whole design together:
   cannot break back down is exactly the number this product exists to replace.
 
 Storage is a single JSON file. That is a deliberate limit, not an oversight:
-the schema is small, the audit trail matters more than throughput, and a
+the schema is small, the audit trail matters more than throughput, plus a
 reviewer can read the entire state of the system in one file.
 """
 from __future__ import annotations

@@ -2,11 +2,11 @@
 """Depth-aware routing across fragmented tokenized-equity pools.
 
 The router's job is not to find the best price. It is to find the best price
-*that can actually be filled*, and to refuse when none can.
+*that can actually be filled*, then to refuse when none can.
 
-Order of operations, and the order matters:
+Order of operations. The order matters:
   1. classify every pool for the asset
-  2. drop anything dead or trapped outright
+  2. drop anything dead outright, likewise anything trapped
   3. simulate the clip against each survivor with exact in-range maths
   4. require proven depth of `min_depth_multiple` times the clip
   5. enforce the mandate's slippage ceiling
@@ -60,7 +60,7 @@ def _states_by_pool(token: str) -> dict:
 def plan_buy(symbol: str, token: str, decimals: int, usdc_amount: int,
              max_slippage_bps: int = 50, min_depth_multiple: int = 3,
              eth_usd: float | None = None) -> Route:
-    """Choose where to buy `usdc_amount` (6dp) of `symbol`, or refuse."""
+    """Choose where to buy `usdc_amount` (6dp) of `symbol`, else refuse."""
     route = Route(ok=False, symbol=symbol, token=token, quote_in=usdc_amount)
     reports = depth.analyse_token(token, decimals, eth_usd=eth_usd)
     if not reports:

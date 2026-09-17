@@ -2,7 +2,7 @@
 """Order planning: turn a mandate into a schedule of executable clips.
 
 A market order into a pool holding $4,891 is how a follower loses money on the
-way in. Every mandate therefore executes through a real order type, and this
+way in. Every mandate therefore executes through a real order type. This
 module turns the mandate's intent plus a follower's size into the individual
 clips an agent will actually fire.
 

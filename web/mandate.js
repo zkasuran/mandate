@@ -4,9 +4,8 @@
 // Both chains and the Flash API serve access-control-allow-origin: *, so the
 // whole product runs client side with no backend. Nothing can go down during
 // judging except the static host. The Python package in this repo is the
-// reference implementation and the CLI; this file is the same logic, and the
-// mandate id it produces is byte-identical because both hash the same
-// canonical JSON.
+// reference implementation and the CLI. This file is the same logic, so the
+// mandate id it produces is byte-identical: both hash the same canonical JSON.
 
 export const CHAINS = {
   robinhood: {
@@ -51,8 +50,8 @@ const SEL = {
 // A public endpoint rate limits long before a scan finishes. The first version
 // of this client had no throttle and swallowed every failure into `null`, which
 // downstream read as "this pool does not exist": a scan that found one pool
-// where there were four, and looked like a clean result. So transport failure
-// and genuine absence are now different things, and only absence returns null.
+// where there were four, then looked like a clean result. So transport failure
+// and genuine absence are now different things. Only absence returns null.
 
 let rpcId = 0;
 let lastCall = 0;

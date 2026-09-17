@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Definitive Flash: asset resolution, aggregated depth and advanced orders.
 
-Two integrations do two different jobs in this product, and keeping them
+Two integrations do two different jobs in this product. Keeping them
 separate is deliberate:
 
   Uniswap v3, read directly     tells the truth about one venue's depth, with
@@ -17,10 +17,10 @@ Order types the API accepts, from its own OpenAPI enum:
 `market`, `limit`, `twap`, `stop`, `stop-loss`, `take-profit`, `bracket`.
 `bracket` as a top-level type returns "not yet supported", so a bracket is
 placed as `attachedBracket` on a market or limit order. That is the API's
-answer, not a guess, and `probe_order_types()` re-checks it live.
+answer, not a guess. `probe_order_types()` re-checks it live.
 
 Nothing here can move funds. Every order carries a `userSignature` produced by
-the funder's wallet, and this module never holds a key: it builds the quote and
+the funder's wallet. This module never holds a key: it builds the quote and
 hands back the EIP-712 payload to be signed elsewhere.
 """
 from __future__ import annotations
@@ -143,7 +143,7 @@ def search(query: str, chain: str | None = None, limit: int = 10) -> list:
 
 @dataclass
 class Resolution:
-    """Which contract a ticker should mean, and why."""
+    """Which contract a ticker should mean, with the reason."""
     ok: bool
     query: str
     chain: str
@@ -174,10 +174,10 @@ MIN_HOLDERS = 1_000
 
 
 def resolve(ticker: str, chain: str, candidates: list | None = None) -> Resolution:
-    """Resolve a ticker to one contract, or refuse and name the lookalikes.
+    """Resolve a ticker to one contract, else refuse and name the lookalikes.
 
     The rule is deliberately strict and boring: the symbol must match the
-    request exactly, case-insensitively, and the asset must clear a liquidity
+    request exactly, case-insensitively, then the asset must clear a liquidity
     and holder floor. Anything else is reported as an impostor rather than
     silently ranked below the winner.
     """

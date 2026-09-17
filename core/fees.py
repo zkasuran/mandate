@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Strategist fee accounting.
 
-A strategist earns on followed volume, not on a follower's profits, and never
-by holding their money. The fee is computed per fill, in USDC, and owed from
+A strategist earns on followed volume, not on a follower's profits, never
+by holding their money. The fee is computed per fill, in USDC, then owed from
 the follower to the strategist at settlement.
 
 Charging on volume rather than performance is a deliberate choice: a
 performance fee on an unverifiable mark is precisely the incentive this product
-exists to remove, and volume is the one quantity both sides can read off the
+exists to remove. Volume is the one quantity both sides can read off the
 chain.
 """
 from __future__ import annotations

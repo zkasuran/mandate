@@ -13,17 +13,19 @@ import threading
 import urllib.error
 import urllib.request
 
+from . import chains
+
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36")
 
-# Public Base endpoints, tried in order. No key required, so the project stays
-# reproducible for anyone who clones it.
-ENDPOINTS = [
-    "https://mainnet.base.org",
-    "https://base-rpc.publicnode.com",
-    "https://base.drpc.org",
-    "https://1rpc.io/base",
-]
+# Kept for callers that predate multi-chain support.
+ENDPOINTS = list(chains.BASE.endpoints)
+
+
+def _endpoints(chain_key: str | None) -> list:
+    if chain_key is None:
+        return ENDPOINTS
+    return list(chains.get(chain_key).endpoints)
 
 _lock = threading.Lock()
 _last_call = [0.0]
@@ -42,13 +44,14 @@ class RpcError(RuntimeError):
     pass
 
 
-def rpc(method: str, params: list, *, retries: int = 5):
+def rpc(method: str, params: list, *, retries: int = 5, chain: str | None = None):
     """One JSON-RPC call. Rotates endpoints and backs off on 429/5xx."""
+    eps = _endpoints(chain)
     payload = json.dumps({"jsonrpc": "2.0", "id": 1,
                           "method": method, "params": params}).encode()
     last = None
     for attempt in range(retries):
-        url = ENDPOINTS[attempt % len(ENDPOINTS)]
+        url = eps[attempt % len(eps)]
         _throttle()
         req = urllib.request.Request(
             url, data=payload,
@@ -73,26 +76,41 @@ def rpc(method: str, params: list, *, retries: int = 5):
     raise RpcError(f"{method} failed after {retries} attempts: {last}")
 
 
-def block_number() -> int:
-    return int(rpc("eth_blockNumber", []), 16)
+def block_number(chain: str | None = None) -> int:
+    return int(rpc("eth_blockNumber", [], chain=chain), 16)
 
 
-def get_code(addr: str) -> str:
-    key = ("code", addr.lower())
+def chain_id(chain: str | None = None) -> int:
+    return int(rpc("eth_chainId", [], chain=chain), 16)
+
+
+def assert_chain(chain_key: str) -> int:
+    """Confirm an endpoint really serves the network we think it does."""
+    want = chains.get(chain_key).chain_id
+    got = chain_id(chain_key)
+    if got != want:
+        raise RpcError(
+            f"{chain_key}: endpoint reports chain id {got}, expected {want}")
+    return got
+
+
+def get_code(addr: str, chain: str | None = None) -> str:
+    key = ("code", chain or "base", addr.lower())
     hit = _cache_get(key)
     if hit is not None:
         return hit[0]
-    out = rpc("eth_getCode", [addr, "latest"])
+    out = rpc("eth_getCode", [addr, "latest"], chain=chain)
     _cache_put(key, out, None)
     return out
 
 
-def has_code(addr: str) -> bool:
-    return len(get_code(addr)) > 2
+def has_code(addr: str, chain: str | None = None) -> bool:
+    return len(get_code(addr, chain)) > 2
 
 
-def call(to: str, data: str, block: str = "latest") -> str:
-    return rpc("eth_call", [{"to": to, "data": data}, block])
+def call(to: str, data: str, block: str = "latest",
+         chain: str | None = None) -> str:
+    return rpc("eth_call", [{"to": to, "data": data}, block], chain=chain)
 
 
 # --- caching ----------------------------------------------------------------
@@ -139,14 +157,15 @@ def cache_clear() -> None:
         _cache.clear()
 
 
-def cached_call(to: str, data: str, block: str = "latest"):
+def cached_call(to: str, data: str, block: str = "latest",
+                chain: str | None = None):
     """eth_call with revert-tolerance and caching. None means the call reverted."""
-    key = ("call", to.lower(), data.lower(), block)
+    key = ("call", chain or "base", to.lower(), data.lower(), block)
     hit = _cache_get(key)
     if hit is not None:
         return hit[0]
     try:
-        out = call(to, data, block)
+        out = call(to, data, block, chain=chain)
         value = None if out in ("0x", "") else out
     except RpcError:
         value = None
@@ -155,12 +174,13 @@ def cached_call(to: str, data: str, block: str = "latest"):
     return value
 
 
-def try_call(to: str, data: str, block: str = "latest"):
+def try_call(to: str, data: str, block: str = "latest",
+             chain: str | None = None):
     """eth_call that returns None on revert instead of raising.
 
     Probing whether a pool exists is a normal miss, not an error.
     """
-    return cached_call(to, data, block)
+    return cached_call(to, data, block, chain=chain)
 
 
 # --- minimal ABI coding (no third-party deps) --------------------------------
@@ -205,21 +225,22 @@ SEL = {
 }
 
 
-def erc20(addr: str) -> dict:
+def erc20(addr: str, chain: str | None = None) -> dict:
     """Read a token's identity straight off the contract."""
-    out = {"address": addr, "code": has_code(addr)}
+    out = {"address": addr, "chain": chain or "base",
+           "code": has_code(addr, chain)}
     if not out["code"]:
         return out
     for key in ("name", "symbol"):
-        raw = try_call(addr, SEL[key])
+        raw = try_call(addr, SEL[key], chain=chain)
         out[key] = dec_string(raw) if raw else None
-    raw = try_call(addr, SEL["decimals"])
+    raw = try_call(addr, SEL["decimals"], chain=chain)
     out["decimals"] = dec_uint(raw) if raw else None
-    raw = try_call(addr, SEL["totalSupply"])
+    raw = try_call(addr, SEL["totalSupply"], chain=chain)
     out["totalSupply"] = dec_uint(raw) if raw else None
     return out
 
 
-def balance_of(token: str, owner: str) -> int | None:
-    raw = try_call(token, SEL["balanceOf"] + enc_addr(owner))
+def balance_of(token: str, owner: str, chain: str | None = None) -> int | None:
+    raw = try_call(token, SEL["balanceOf"] + enc_addr(owner), chain=chain)
     return dec_uint(raw) if raw else None

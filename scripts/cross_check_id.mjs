@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
-// The browser and the Python package must agree on a mandate id, or the same
-// strategy has two identities and the whole "rules are the id" claim is void.
+// The browser and the Python package must agree on a mandate id. Otherwise the
+// same strategy has two identities and the whole "rules are the id" claim is void.
+//
+// It also checks ERC20 string decoding, because the two implementations once
+// disagreed there: these token names carry a U+2022 bullet. Decoding byte
+// by byte rendered it as mojibake in the browser while Python was fine. That
+// stayed invisible until the page was opened, so it is gated here now.
+//
 // Run with: node scripts/cross_check_id.mjs   (compared against Python by
 // scripts/cross_check_id.sh)
-import { buildRules, canonical, mandateId } from '../web/mandate.js';
+import { buildRules, canonical, mandateId, decodeAbiString } from '../web/mandate.js';
 
 const rules = buildRules({
   legs: [
@@ -18,3 +24,10 @@ const rules = buildRules({
 });
 console.log(canonical(rules));
 console.log(await mandateId(rules));
+
+// An abi-encoded "NVIDIA \u2022 Robinhood Token", as the chain returns it.
+const NAME_BLOB =
+  '0x0000000000000000000000000000000000000000000000000000000000000020'
+  + '000000000000000000000000000000000000000000000000000000000000001a'
+  + '4e564944494120e280a220526f62696e686f6f6420546f6b656e00000000000000';
+console.log(decodeAbiString(NAME_BLOB));

@@ -476,7 +476,46 @@ $('#r_go').onclick=async()=>{
         hasTypedData:!!q.evm?.orderTypedData,needsApproval:!!q.evm?.approveTx,at:Date.now()+fills.length});
     }
     push('quote',fills.length>0,`${fills.length} clips quoted and gated, ${refused.length} refused`);
+    // 8. protect what was just opened, off the basis the fills actually produced
+    let eplan={exits:[],warnings:[]}, cover={fullyProtected:true,coveragePct:100,legsWithNoStop:[]};
+    if(fills.length){
+      const holdings={};
+      M.portfolio(fills,{}).holdings.forEach(h=>holdings[h.ticker]={quantity:h.quantity,costBasis:h.costBasis});
+      eplan=M.deriveExits(m.rules,holdings,UNIVERSE);
+      if(eplan.exits.length){
+        await M.placeExits(eplan.exits,'robinhood',FOLLOWER,
+          Math.max(100,m.rules.execution.max_slippage_bps));
+      }
+      cover=M.exitCoverage(eplan.exits,holdings);
+      const placed=eplan.exits.filter(e=>e.placed).length;
+      push('protect',cover.fullyProtected,
+        `${placed}/${eplan.exits.length} protective exits resting at the venue, `+
+        `${cover.coveragePct.toFixed(0)}% of legs carry a live stop`+
+        (cover.fullyProtected?'':`; exposed: ${cover.legsWithNoStop.join(', ')}`));
+    }
+
     push('execute',false,'dry run: quotes are real and signable, nothing was sent. Broadcasting needs a signature from the follower wallet. This page holds no key.');
+
+    if(eplan.exits.length){
+      out.appendChild(el('h3','mid',`${eplan.exits.filter(e=>e.placed).length}/${eplan.exits.length} protective exits resting`));
+      const tb=el('table');
+      tb.innerHTML="<thead><tr><th>kind</th><th>leg</th><th class='num'>quantity</th>"+
+        "<th class='num'>trigger</th><th class='num'>from basis</th><th>type</th><th>placed</th></tr></thead>";
+      const body=el('tbody');
+      eplan.exits.forEach(e=>{const t=el('tr');
+        t.appendChild(el('td',null,e.kind.replace('_',' ')));
+        t.appendChild(el('td',null,e.ticker));
+        t.appendChild(el('td','num',e.quantity.toFixed(6)));
+        t.appendChild(el('td','num',usd(e.triggerPrice)));
+        t.appendChild(el('td','num',(e.bpsFromReference>0?'+':'')+e.bpsFromReference+'bps'));
+        t.appendChild(el('td',null,e.orderType||'-'));
+        const s2=el('td');s2.appendChild(el('span','pill '+(e.placed?'ok':'nope'),e.placed?'RESTING':'FAILED'));t.appendChild(s2);
+        body.appendChild(t);});
+      tb.appendChild(body);const bx=el('div','box');bx.appendChild(tb);out.appendChild(bx);
+      if(!cover.fullyProtected)out.appendChild(el('div','note',
+        `Position is only partially protected: ${cover.legsWithNoStop.join(', ')} has no live stop.`));
+      eplan.warnings.forEach(w=>out.appendChild(el('div','note',w)));
+    }
 
     if(fills.length){
       FILLS.push(...fills);save();
@@ -628,15 +667,20 @@ $('#g_go').onclick=async()=>{
   const btn=$('#g_go');btn.disabled=true;btn.textContent='Scanning Base…';
   const out=$('#g_out');out.innerHTML='<div class="empty">reading Uniswap v3 on Base…</div>';
   try{
-    const counts={live:0,thin:0,dead:0,trapped:0};const boxes=[];
+    const counts={live:0,thin:0,dead:0,trapped:0};const boxes=[];const failures=[];
     for(const [sym,addr] of Object.entries(B20)){
       const rows=[];
       for(const fee of M.FEE_TIERS){
-        const pool=await M.getPool(addr,M.CHAINS.base.quote,fee);
-        if(!pool)continue;
-        const r=await M.poolReport(pool,addr,8);
-        if(!r)continue;
-        r.fee=fee;counts[r.status]++;rows.push(r);
+        // A pool that cannot be READ is not a pool that does not EXIST. Read
+        // failures are surfaced rather than folded into the counts, because a
+        // silently short scan reads as a clean market.
+        try{
+          const pool=await M.getPool(addr,M.CHAINS.base.quote,fee);
+          if(!pool)continue;
+          const r=await M.poolReport(pool,addr,8);
+          if(!r){failures.push(`${sym} fee=${fee}: pool exists but did not answer`);continue;}
+          r.fee=fee;counts[r.status]++;rows.push(r);
+        }catch(e){failures.push(`${sym} fee=${fee}: ${e.message}`);}
       }
       boxes.push({sym,rows});
     }
@@ -648,6 +692,11 @@ $('#g_go').onclick=async()=>{
     add(counts.dead+counts.trapped,'dead or trapped','bad');
     add(total?Math.round((counts.dead+counts.trapped)/total*100)+'%':'-','unusable','bad');
     out.appendChild(c);
+    if(failures.length){
+      out.appendChild(el('div','note',
+        `${failures.length} pools could not be read and are excluded from these counts: `+
+        failures.join('; ')));
+    }
     boxes.forEach(({sym,rows})=>{
       const bx=el('div','box'),h=el('h3');h.appendChild(el('span',null,sym));bx.appendChild(h);
       const tb=el('table');

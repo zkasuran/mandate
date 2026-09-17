@@ -54,6 +54,9 @@ ROBINHOOD = Chain(
     key="robinhood",
     name="Robinhood Chain",
     chain_id=4663,
+    # rpc.arrowrpc.com is server-side only: it answers correctly but sends no
+    # CORS header, so the browser list in web/mandate.js is deliberately
+    # shorter than this one.
     endpoints=(
         "https://robinhood-rpc.publicnode.com",
         "https://rpc.mainnet.chain.robinhood.com",

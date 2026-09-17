@@ -10,9 +10,13 @@
 export const CHAINS = {
   robinhood: {
     key: 'robinhood', name: 'Robinhood Chain', chainId: 4663,
+    // Browser-reachable endpoints only. core/chains.py carries a longer list
+    // because Python is not subject to CORS. rpc.arrowrpc.com answers fine from
+    // a server and sends no access-control header, so putting it in this
+    // rotation emptied the ghost scan from a page while passing in node.
+    // Checked with an OPTIONS preflight, not assumed.
     rpc: ['https://robinhood-rpc.publicnode.com',
-          'https://rpc.mainnet.chain.robinhood.com',
-          'https://rpc.arrowrpc.com'],
+          'https://rpc.mainnet.chain.robinhood.com'],
     explorer: 'https://robinscan.io',
     quoteSymbol: 'USDG',
     quote: '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168',
@@ -55,7 +59,13 @@ const SEL = {
 
 let rpcId = 0;
 let lastCall = 0;
-const MIN_GAP_MS = 60;
+let nextEndpoint = 0;
+// Spacing was not the binding constraint. At 60ms a full ghost scan drew 46
+// rate-limit responses; slowing to 130ms drew 51. The cause was that every
+// call started on the same endpoint and only moved after being refused, so one
+// host absorbed the whole scan while three sat idle. Calls now start on a
+// rotating endpoint and the retry walks on from there.
+const MIN_GAP_MS = 70;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -69,9 +79,10 @@ export class RpcError extends Error {}
 
 export async function rpc(chainKey, method, params, { retries = 4 } = {}) {
   const eps = CHAINS[chainKey].rpc;
+  const start = nextEndpoint++;
   let last;
   for (let i = 0; i < retries; i++) {
-    const url = eps[i % eps.length];
+    const url = eps[(start + i) % eps.length];
     await throttle();
     try {
       const r = await fetch(url, {
@@ -79,9 +90,13 @@ export async function rpc(chainKey, method, params, { retries = 4 } = {}) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
       });
-      if (r.status === 429 || r.status >= 500) {
+      // Any non-2xx is the endpoint declining to answer, not the chain
+      // answering. Rotating only on 429 and 5xx let a 410 from one host poison
+      // the read while three healthy hosts sat idle, which moved a ghost-pool
+      // count without reporting a single failure.
+      if (!r.ok) {
         last = new RpcError(`${url} returned ${r.status}`);
-        await sleep(250 * 2 ** i);
+        await sleep(200 * 2 ** i);
         continue;
       }
       const out = await r.json();
@@ -121,18 +136,30 @@ const encAddr = a => a.toLowerCase().replace('0x', '').padStart(64, '0');
 const encUint = n => BigInt(n).toString(16).padStart(64, '0');
 const decUint = (h, w = 0) => BigInt('0x' + (h.slice(2).substr(w * 64, 64) || '0'));
 
-function decString(h) {
+// Decoded as UTF-8, not byte by byte. These names carry a U+2022 bullet
+// ("NVIDIA \u2022 Robinhood Token"). String.fromCharCode per byte renders that
+// as mojibake. Python got it right, the browser did not, then it took opening
+// the page to see it.
+const UTF8 = new TextDecoder('utf-8');
+
+function hexToBytes(hex) {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+
+export function decodeAbiString(h) {
   if (!h) return null;
   const b = h.slice(2);
+  // Short returns are the old bytes32 style: right-padded with zeros.
   if (b.length < 128) {
-    let s = ''; for (let i = 0; i < b.length; i += 2) {
-      const c = parseInt(b.substr(i, 2), 16); if (c) s += String.fromCharCode(c);
-    } return s;
+    return UTF8.decode(hexToBytes(b)).replace(/\u0000+$/, '');
   }
   const len = Number(BigInt('0x' + b.substr(64, 64)));
-  let s = ''; for (let i = 0; i < len; i++) {
-    s += String.fromCharCode(parseInt(b.substr(128 + i * 2, 2), 16));
-  } return s;
+  if (!len || 128 + len * 2 > b.length) {
+    return UTF8.decode(hexToBytes(b.substr(0, 64))).replace(/\u0000+$/, '');
+  }
+  return UTF8.decode(hexToBytes(b.substr(128, len * 2)));
 }
 
 export async function erc20(chainKey, addr) {
@@ -145,7 +172,7 @@ export async function erc20(chainKey, addr) {
   const code = await rpcValue(chainKey, 'eth_getCode', [addr, 'latest']);
   return {
     address: addr, hasCode: code && code.length > 2,
-    symbol: decString(sym), name: decString(nm),
+    symbol: decodeAbiString(sym), name: decodeAbiString(nm),
     decimals: dec ? Number(decUint(dec)) : null,
     totalSupply: sup ? decUint(sup) : null,
   };
@@ -531,4 +558,78 @@ export async function poolReport(pool, base, baseDec, quoteDec = 6) {
   else if (quoteHeld < 5000) { reasons.push(`only $${quoteHeld.toLocaleString(undefined,{maximumFractionDigits:2})} of quote token held`); if (status === 'live') status = 'thin'; }
   return { pool, price, tick: Number(tick), liquidity: liquidity.toString(),
            quoteHeld, status, reasons };
+}
+
+
+// --- protective exits -------------------------------------------------------
+// Mirrors core/exits.py. A mandate that plans a stop and never places one is a
+// mandate with no stop, so the browser places them too rather than showing a
+// shorter version of the same run.
+
+export const TRIGGER_DIRECTION = { stop_loss: 'lower', take_profit: 'upper' };
+export const EXIT_ORDER_TYPE = { stop_loss: 'stop-loss', take_profit: 'take-profit' };
+
+/** Exits owed on the positions actually held, triggered off the position's own
+ *  basis rather than the live mark. Re-deriving from the current price quietly
+ *  moves the risk the follower agreed to. */
+export function deriveExits(rules, holdings, universe) {
+  const risk = rules.risk;
+  const exits = [], warnings = [];
+  if (!risk.stop_loss_bps && !risk.take_profit_bps) {
+    warnings.push('this mandate publishes no stop and no take-profit, so nothing '
+      + 'protects the position once it is open');
+    return { exits, warnings };
+  }
+  for (const leg of rules.legs) {
+    const t = leg.symbol.toUpperCase();
+    const h = holdings[t];
+    if (!h || h.quantity <= 0) continue;
+    const inst = universe[t];
+    if (!inst || !inst.verified) { warnings.push(`${t}: unverified, no exit placed`); continue; }
+    if (!(h.costBasis > 0)) { warnings.push(`${t}: no cost basis, cannot derive a trigger`); continue; }
+    const add = (kind, bps, sign) => exits.push({
+      kind, ticker: t, address: inst.address, quantity: h.quantity,
+      triggerPrice: h.costBasis * (1 + sign * bps / 10_000),
+      referencePrice: h.costBasis, bpsFromReference: sign * bps, placed: false,
+    });
+    if (risk.stop_loss_bps) add('stop_loss', risk.stop_loss_bps, -1);
+    if (risk.take_profit_bps) add('take_profit', risk.take_profit_bps, 1);
+  }
+  return { exits, warnings };
+}
+
+export async function placeExits(exits, chainKey, funder, maxSlippageBps = 100) {
+  for (const e of exits) {
+    try {
+      const q = await flashQuote({
+        targetChain: CHAINS[chainKey].flash, contraChain: CHAINS[chainKey].flash,
+        targetAsset: e.address, contraAsset: CHAINS[chainKey].quote,
+        side: 'sell', qty: e.quantity.toFixed(8),
+        orderType: EXIT_ORDER_TYPE[e.kind], funderAddress: funder,
+        maxSlippage: (maxSlippageBps / 10_000).toFixed(6),
+        triggers: [{ notionalPrice: e.triggerPrice.toFixed(6),
+                     triggerType: TRIGGER_DIRECTION[e.kind] }],
+      });
+      e.placed = true; e.quoteId = q.quoteId; e.orderType = q.orderType;
+      e.hasTypedData = !!q.evm?.orderTypedData;
+    } catch (err) { e.error = err.message; }
+  }
+  return exits;
+}
+
+/** How much of the position carries a live stop. A stop on two of three legs
+ *  must not read as a protected position. */
+export function exitCoverage(exits, holdings) {
+  const withStop = [], without = [];
+  for (const [t, h] of Object.entries(holdings)) {
+    if (h.quantity <= 0) continue;
+    (exits.some(e => e.ticker === t && e.kind === 'stop_loss' && e.placed)
+      ? withStop : without).push(t);
+  }
+  const total = withStop.length + without.length;
+  return {
+    legsWithALiveStop: withStop.sort(), legsWithNoStop: without.sort(),
+    fullyProtected: without.length === 0,
+    coveragePct: total ? 100 * withStop.length / total : 100,
+  };
 }

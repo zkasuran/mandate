@@ -20,6 +20,12 @@ m = spec.Mandate(
 m.validate()
 print(m.canonical().decode())
 print(m.mandate_id())
+
+from core import chain
+blob = ("0x" + "0" * 62 + "20"
+        + "0" * 62 + "1a"
+        + "4e564944494120e280a220526f62696e686f6f6420546f6b656e00000000000000")
+print(chain.dec_string(blob))
 PY
 
 if diff -q /tmp/mandate-js.txt /tmp/mandate-py.txt >/dev/null; then

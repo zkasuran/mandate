@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Base JSON-RPC access with retry, backoff and endpoint rotation.
+"""Multi-chain JSON-RPC access with retry, backoff and endpoint rotation.
 
 Every on-chain identifier this project publishes is read through here at run
 time. Nothing is hardcoded from a doc: a doc's example address turned out to
@@ -45,7 +45,7 @@ class RpcError(RuntimeError):
 
 
 def rpc(method: str, params: list, *, retries: int = 5, chain: str | None = None):
-    """One JSON-RPC call. Rotates endpoints and backs off on 429/5xx."""
+    """One JSON-RPC call. Rotates endpoints and backs off on any non-2xx."""
     eps = _endpoints(chain)
     payload = json.dumps({"jsonrpc": "2.0", "id": 1,
                           "method": method, "params": params}).encode()
@@ -65,11 +65,12 @@ def rpc(method: str, params: list, *, retries: int = 5, chain: str | None = None
                 raise RpcError(f"{method}: {out['error']}")
             return out["result"]
         except urllib.error.HTTPError as e:
+            # Any non-2xx is the endpoint declining to answer rather than the
+            # chain answering. Rotating only on a short list let a 410 from one
+            # host fail a read that three healthy hosts would have served.
             last = e
-            if e.code in (429, 500, 502, 503, 504):
-                time.sleep(0.4 * (2 ** attempt))
-                continue
-            raise
+            time.sleep(0.4 * (2 ** attempt))
+            continue
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
             last = e
             time.sleep(0.4 * (2 ** attempt))

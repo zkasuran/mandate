@@ -1,0 +1,28 @@
+Mandate
+Copyright 2026 zkasuran
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+
+This product contains no third-party source code. It has no runtime
+dependencies beyond the Python standard library.
+
+Third-party systems it reads, with the terms under which it reads them:
+
+  Base mainnet public JSON-RPC endpoints (mainnet.base.org,
+  base-rpc.publicnode.com, base.drpc.org, 1rpc.io/base)
+    Read-only public blockchain state. No key, no account, no terms of
+    service accepted. Requests are rate limited client-side.
+
+  Uniswap v3 contracts on Base
+    Public, permissionless smart contracts. Read via eth_call and
+    eth_getLogs. No SDK, no API key, no Uniswap API terms engaged.
+
+  B20 tokenized equity contracts on Base
+    Public ERC-20 contracts. Read-only.
+
+Keccak-256 is implemented from the published permutation specification in
+core/keccak.py and is checked against published test vectors in
+tests/test_core.py. No third-party hashing code is vendored.
+
+Equity prices shown are pool prices read from Uniswap on Base. They are not
+issuer data, not a market data feed, not investment advice.

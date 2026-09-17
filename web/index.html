@@ -1,0 +1,423 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mandate, copy trading that can't lie</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#13171c; --panel2:#181d24; --line:#242c36;
+  --ink:#e8edf3; --dim:#8b97a6; --faint:#5d6875;
+  --accent:#ff6a3d; --good:#3ddc97; --warn:#ffc857; --bad:#ff5470;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+a{color:var(--accent)}
+header{border-bottom:1px solid var(--line);padding:18px 26px;display:flex;
+  align-items:baseline;gap:18px;flex-wrap:wrap;background:var(--panel)}
+h1{margin:0;font-size:21px;letter-spacing:-.02em}
+h1 b{color:var(--accent)}
+.tag{color:var(--dim);font-size:14px}
+.spacer{flex:1}
+#health{font:12px/1.4 var(--mono);color:var(--faint);text-align:right}
+#health .on{color:var(--good)} #health .off{color:var(--warn)}
+nav{display:flex;gap:2px;padding:0 26px;border-bottom:1px solid var(--line);
+  background:var(--panel);overflow-x:auto}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);
+  padding:12px 16px;font-size:14px;cursor:pointer;white-space:nowrap}
+nav button:hover{color:var(--ink)}
+nav button.sel{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:26px;max-width:1240px}
+section{display:none} section.sel{display:block}
+.lede{color:var(--dim);max-width:70ch;margin:0 0 22px}
+.lede strong{color:var(--ink);font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px 16px}
+.card .n{font:600 26px/1.2 var(--mono);letter-spacing:-.02em}
+.card .l{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.09em;margin-top:5px}
+.card.bad .n{color:var(--bad)} .card.good .n{color:var(--good)} .card.warn .n{color:var(--warn)}
+.tok{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;overflow:hidden}
+.tok>h3{margin:0;padding:13px 16px;font-size:15px;display:flex;gap:10px;align-items:baseline;
+  border-bottom:1px solid var(--line);background:var(--panel2)}
+.tok>h3 .sym{font-family:var(--mono);color:var(--accent);font-weight:600}
+.tok>h3 .nm{color:var(--dim);font-weight:400;font-size:13px}
+.tok>h3 .sup{margin-left:auto;font:12px var(--mono);color:var(--faint)}
+table{width:100%;border-collapse:collapse;font:13px var(--mono)}
+th{text-align:left;color:var(--faint);font-weight:500;font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;padding:9px 16px;border-bottom:1px solid var(--line)}
+td{padding:9px 16px;border-bottom:1px solid #1a2028;vertical-align:top}
+tr:last-child td{border-bottom:0}
+.num{text-align:right}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.04em}
+.live{background:rgba(61,220,151,.13);color:var(--good)}
+.thin{background:rgba(255,200,87,.13);color:var(--warn)}
+.dead{background:rgba(255,84,112,.13);color:var(--bad)}
+.trapped{background:rgba(255,84,112,.22);color:#ff8095}
+.why{color:var(--faint);font-size:11.5px;font-family:inherit;line-height:1.5;margin-top:3px}
+.why::before{content:"! ";color:var(--bad)}
+button.go{background:var(--accent);color:#14100e;border:0;border-radius:7px;
+  padding:9px 18px;font-weight:600;font-size:14px;cursor:pointer}
+button.go:hover{filter:brightness(1.1)} button.go:disabled{opacity:.45;cursor:default}
+input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  border-radius:7px;padding:9px 11px;font:14px var(--mono);width:100%}
+label{display:block;font-size:11px;color:var(--faint);text-transform:uppercase;
+  letter-spacing:.08em;margin:0 0 5px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px}
+.row>div{flex:1;min-width:130px}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:15px;
+  overflow:auto;font:12px/1.55 var(--mono);color:var(--dim);max-height:460px}
+.step{display:flex;gap:11px;padding:11px 14px;border:1px solid var(--line);
+  border-radius:8px;margin-bottom:7px;background:var(--panel);align-items:flex-start}
+.step .mk{font:600 11px var(--mono);padding:2px 8px;border-radius:5px;flex-shrink:0;margin-top:1px}
+.step.ok .mk{background:rgba(61,220,151,.14);color:var(--good)}
+.step.no .mk{background:rgba(255,84,112,.14);color:var(--bad)}
+.step .nm{font:600 13px var(--mono);width:120px;flex-shrink:0;color:var(--ink)}
+.step .dt{color:var(--dim);font-size:13.5px}
+.mid{font-size:13px;color:var(--faint);margin:20px 0 9px;text-transform:uppercase;letter-spacing:.09em}
+.empty{color:var(--faint);padding:26px;text-align:center;border:1px dashed var(--line);border-radius:9px}
+.mand{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:11px}
+.mand h4{margin:0 0 4px;font-size:15px}
+.mand .id{font:11px var(--mono);color:var(--faint);word-break:break-all}
+.mand .th{color:var(--dim);font-size:13.5px;margin:9px 0}
+.mand .legs{font:12px var(--mono);color:var(--accent)}
+.note{border-left:2px solid var(--accent);padding:9px 14px;color:var(--dim);
+  background:var(--panel);font-size:13.5px;margin:16px 0;border-radius:0 7px 7px 0}
+footer{color:var(--faint);font-size:12px;padding:30px 26px;border-top:1px solid var(--line);margin-top:40px}
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Mandate</b></h1>
+  <span class="tag">Copy trading that can't lie.</span>
+  <span class="spacer"></span>
+  <div id="health">connecting…</div>
+</header>
+
+<nav>
+  <button data-t="market" class="sel">Market truth</button>
+  <button data-t="mandates">Mandates</button>
+  <button data-t="sim">Simulate</button>
+  <button data-t="tape">Tape</button>
+  <button data-t="about">How it works</button>
+</nav>
+
+<main>
+
+<section id="market" class="sel">
+  <p class="lede">Every tokenized equity on Base, every Uniswap v3 pool, classified against
+  live chain state. A pool that exists is not a pool you can trade. <strong>The ones marked
+  dead or trapped carry a quoted price and cannot fill anything.</strong></p>
+  <div class="cards" id="mcards"></div>
+  <div id="mbody"><div class="empty">reading Base…</div></div>
+</section>
+
+<section id="mandates">
+  <p class="lede">A mandate is a strategy as a signed, immutable ruleset. The id is the
+  SHA-256 of the rules themselves, so <strong>changing what it does changes its id</strong>.
+  Nobody can quietly rewrite a thesis after the fact.</p>
+  <div id="mlist"><div class="empty">loading…</div></div>
+  <h3 class="mid">Publish a mandate</h3>
+  <div class="row">
+    <div style="flex:2"><label>Name</label><input id="p_name" value="Megacap Two"></div>
+    <div><label>Fee (bps on volume)</label><input id="p_fee" value="100"></div>
+    <div><label>Slices</label><input id="p_slices" value="4"></div>
+    <div><label>Max slippage (bps)</label><input id="p_slip" value="50"></div>
+  </div>
+  <div class="row">
+    <div style="flex:3"><label>Thesis</label><input id="p_thesis"
+      value="Equal weight Apple and NVIDIA, accumulated in slices, never into a pool that cannot absorb the clip."></div>
+  </div>
+  <div class="row">
+    <div><label>Leg A</label><select id="p_a"></select></div>
+    <div><label>Leg B</label><select id="p_b"></select></div>
+    <div><label>Market hours only</label><select id="p_mh">
+      <option value="1">yes, refuse out of hours</option>
+      <option value="0">no, allow uncertified marks</option></select></div>
+    <div style="flex:0 0 auto"><button class="go" id="p_go">Publish</button></div>
+  </div>
+  <pre id="p_out" style="display:none"></pre>
+</section>
+
+<section id="sim">
+  <p class="lede">Run a mandate for a follower at a chosen size. Every step can refuse, because
+  <strong>a refusal is a result</strong>. This is the whole decision path an agent takes
+  before it is allowed to touch anyone's wallet.</p>
+  <div class="row">
+    <div style="flex:2"><label>Mandate</label><select id="s_m"></select></div>
+    <div><label>Sleeve (USD)</label><input id="s_size" value="2000"></div>
+    <div style="flex:0 0 auto"><button class="go" id="s_go">Run agent</button></div>
+  </div>
+  <div id="s_out"></div>
+</section>
+
+<section id="tape">
+  <p class="lede">Real fills, read from Uniswap <code>Swap</code> logs on Base and replayed
+  into a position. <strong>These numbers are not reported by us, they are recomputed from
+  public data</strong>, so anyone can check them against the same blocks.</p>
+  <div class="row">
+    <div><label>Symbol</label><select id="t_sym"></select></div>
+    <div><label>Lookback (blocks)</label><input id="t_blocks" value="4000"></div>
+    <div style="flex:0 0 auto"><button class="go" id="t_go">Read the tape</button></div>
+  </div>
+  <div id="t_out"></div>
+</section>
+
+<section id="about">
+  <p class="lede">Mandate is a strategy marketplace for tokenized equities where the
+  execution is depth-proven and the track record is computed rather than claimed.</p>
+  <div class="note"><strong>The problem.</strong> Copy trading runs on numbers you have to
+  take someone's word for. The platform custodies your money, the star trader reports their
+  own returns. You find out afterwards.</div>
+  <div class="note"><strong>The fix.</strong> The strategy is a hash. The follower keeps
+  their own wallet under revocable delegation. Every fill is a public log. Returns are
+  derived from those logs, so a strategist cannot inflate a number that anyone can recompute.</div>
+  <div class="note"><strong>The part nobody handles.</strong> Tokenized equity liquidity on
+  Base is fragmented and salted with pools that quote a price and hold nothing. Routing into
+  one is how a follower loses money on the way in. Mandate classifies every pool and refuses
+  rather than filling badly.</div>
+  <h3 class="mid">Verify any of this yourself</h3>
+  <pre id="verify">git clone the repo, then:
+
+  python3 scripts/verify_addresses.py    every address read off Base, live
+  python3 scripts/scan_market.py         the pool classification above
+  python3 -m unittest discover -s tests  the accounting and guard rules
+
+No API key is needed. Every number on this page comes from public Base state.</pre>
+</section>
+
+</main>
+<footer>
+  Mandate. Built for Runtime Agent Week. Base mainnet, Uniswap v3, tokenized B20 equities.
+  Prices are read from live pools and are not investment advice.
+</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (t,c,x) => { const n=document.createElement(t); if(c)n.className=c;
+  if(x!==undefined)n.textContent=x; return n; };
+const usd = n => n==null?"-":"$"+Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const api = async (p,o) => (await fetch(p,o)).json();
+let MARKET=null, SYMS=[];
+
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("sel"));
+  document.querySelectorAll("section").forEach(x=>x.classList.remove("sel"));
+  b.classList.add("sel"); $("#"+b.dataset.t).classList.add("sel");
+});
+
+async function health(){
+  try{
+    const h = await api("/api/health");
+    const s = h.session;
+    $("#health").innerHTML =
+      `base block ${h.block.toLocaleString()} · ${h.tokens_verified} tokens verified<br>`+
+      `underlying market <span class="${s.open?'on':'off'}">${s.open?'OPEN':'CLOSED'}</span> · ${s.reason}`;
+  }catch(e){ $("#health").textContent = "api unreachable"; }
+}
+
+function poolRow(p){
+  const tr = el("tr");
+  const st = el("td"); st.appendChild(el("span","pill "+p.status,p.status.toUpperCase()));
+  tr.appendChild(st);
+  tr.appendChild(el("td", null, (p.fee/10000).toFixed(2)+"%"));
+  const px = el("td","num");
+  px.textContent = p.price > 1e12 ? p.price.toExponential(3) : usd(p.price);
+  if(p.price>1e12) px.style.color="var(--bad)";
+  tr.appendChild(px);
+  tr.appendChild(el("td","num", usd(p.quote_usd_held)));
+  tr.appendChild(el("td","num", p.tick.toLocaleString()));
+  const w = el("td");
+  const a = el("a",null,p.pool.slice(0,10)+"…");
+  a.href="https://basescan.org/address/"+p.pool; a.target="_blank";
+  w.appendChild(a);
+  (p.reasons||[]).forEach(r=>w.appendChild(el("div","why",r)));
+  tr.appendChild(w);
+  return tr;
+}
+
+async function market(){
+  const m = await api("/api/market"); MARKET=m;
+  SYMS = Object.keys(m.tokens);
+  const c = $("#mcards"); c.innerHTML="";
+  const add=(n,l,k)=>{const d=el("div","card"+(k?" "+k:""));
+    d.appendChild(el("div","n",n)); d.appendChild(el("div","l",l)); c.appendChild(d);};
+  add(SYMS.length,"equities verified");
+  add(m.total_pools,"pools found");
+  add(m.counts.live,"live","good");
+  add(m.counts.thin,"thin","warn");
+  add(m.counts.dead+m.counts.trapped,"dead or trapped","bad");
+  add(m.unusable_pct+"%","of pools unusable","bad");
+
+  const b = $("#mbody"); b.innerHTML="";
+  for(const sym of SYMS){
+    const t = m.tokens[sym], box = el("div","tok"), h = el("h3");
+    h.appendChild(el("span","sym",sym));
+    h.appendChild(el("span","nm",t.meta.name));
+    h.appendChild(el("span","sup",Number(t.meta.supply_human).toLocaleString(undefined,{maximumFractionDigits:0})+" tokens outstanding"));
+    box.appendChild(h);
+    const tb=el("table");
+    tb.innerHTML="<thead><tr><th>status</th><th>fee</th><th class='num'>quoted price</th>"+
+      "<th class='num'>depth held</th><th class='num'>tick</th><th>pool</th></tr></thead>";
+    const body=el("tbody"); t.pools.forEach(p=>body.appendChild(poolRow(p)));
+    tb.appendChild(body); box.appendChild(tb); b.appendChild(box);
+  }
+  ["#p_a","#p_b","#t_sym"].forEach((id,i)=>{
+    const s=$(id); s.innerHTML="";
+    SYMS.forEach(x=>{const o=el("option",null,x);o.value=x;s.appendChild(o);});
+    s.selectedIndex = id==="#p_b" ? Math.min(1,SYMS.length-1) : 0;
+  });
+}
+
+async function mandates(){
+  const {mandates:rows} = await api("/api/mandates");
+  const w=$("#mlist"); w.innerHTML="";
+  if(!rows.length){ w.appendChild(el("div","empty","No mandates published yet. Publish one below.")); }
+  const sel=$("#s_m"); sel.innerHTML="";
+  rows.forEach(r=>{
+    const d=el("div","mand");
+    d.appendChild(el("h4",null,r.name));
+    d.appendChild(el("div","id",r.mandate_id));
+    d.appendChild(el("div","th",r.thesis));
+    d.appendChild(el("div","legs", r.rules.legs.map(l=>`${l.symbol} ${(l.weight_bps/100).toFixed(0)}%`).join("  ·  ")
+      + `   |  ${r.rules.execution.kind} x${r.rules.execution.slices}`
+      + `  |  max slip ${r.rules.execution.max_slippage_bps}bps`
+      + `  |  ${r.rules.execution.require_market_hours?"market hours only":"24/7"}`
+      + `  |  fee ${r.rules.fee_bps}bps`));
+    w.appendChild(d);
+    const o=el("option",null,r.name+"  ·  "+r.mandate_id.slice(0,18)+"…");
+    o.value=r.mandate_id; sel.appendChild(o);
+  });
+}
+
+$("#p_go").onclick = async () => {
+  const btn=$("#p_go"); btn.disabled=true; btn.textContent="Publishing…";
+  const a=$("#p_a").value, b=$("#p_b").value;
+  const legs = a===b
+    ? [{symbol:a,token:MARKET.tokens[a].meta.address,weight_bps:10000}]
+    : [{symbol:a,token:MARKET.tokens[a].meta.address,weight_bps:5000},
+       {symbol:b,token:MARKET.tokens[b].meta.address,weight_bps:5000}];
+  const body={name:$("#p_name").value,strategist:"0xDB6c6340342e71A63cD11Ebac2185204b7777777",
+    thesis:$("#p_thesis").value,legs,fee_bps:+$("#p_fee").value,
+    execution:{kind:"twap",slices:+$("#p_slices").value,interval_seconds:900,
+      max_slippage_bps:+$("#p_slip").value,min_depth_multiple:3,
+      require_market_hours:$("#p_mh").value==="1"}};
+  const r = await api("/api/mandates",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify(body)});
+  $("#p_out").style.display="block";
+  $("#p_out").textContent = r.error ? "REJECTED: "+r.error
+    : (r.published ? r.signing_message : "Already published with identical rules:\n"+r.mandate.mandate_id);
+  btn.disabled=false; btn.textContent="Publish";
+  await mandates();
+};
+
+$("#s_go").onclick = async () => {
+  const btn=$("#s_go"); btn.disabled=true; btn.textContent="Running…";
+  const out=$("#s_out"); out.innerHTML='<div class="empty">routing against live pools…</div>';
+  try{
+    const r = await api("/api/simulate",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({mandate_id:$("#s_m").value,
+        sleeve_usdc:Math.round(+$("#s_size").value*1e6),
+        follower:"0xDB6c6340342e71A63cD11Ebac2185204b7777777"})});
+    out.innerHTML="";
+    if(r.error){ out.appendChild(el("div","empty",r.error)); return; }
+    r.decisions.forEach(d=>{
+      const s=el("div","step "+(d.ok?"ok":"no"));
+      s.appendChild(el("span","mk",d.ok?"PASS":"STOP"));
+      s.appendChild(el("span","nm",d.step));
+      s.appendChild(el("span","dt",d.detail));
+      out.appendChild(s);
+    });
+    if(r.clips.length){
+      out.appendChild(el("h3","mid",`${r.clips.length} clips built`));
+      const tb=el("table");
+      tb.innerHTML="<thead><tr><th>leg</th><th>clip</th><th class='num'>size</th>"+
+        "<th>fee</th><th class='num'>fill</th><th class='num'>slip</th><th>calldata</th><th>sent</th></tr></thead>";
+      const body=el("tbody");
+      r.clips.forEach(c=>{
+        const t=el("tr");
+        t.appendChild(el("td",null,c.clip.symbol));
+        t.appendChild(el("td",null,c.clip.index+"/"+c.clip.total));
+        t.appendChild(el("td","num",usd(c.clip.quote_amount/1e6)));
+        t.appendChild(el("td",null,(c.route.fee/10000).toFixed(2)+"%"));
+        t.appendChild(el("td","num",usd(c.route.effective_price)));
+        t.appendChild(el("td","num",c.route.slippage_bps+"bps"));
+        t.appendChild(el("td",null,c.tx.data.slice(0,10)));
+        const s=el("td"); s.appendChild(el("span","pill "+(c.send.broadcast?"live":"thin"),
+          c.send.broadcast?"SENT":"DRY RUN")); t.appendChild(s);
+        body.appendChild(t);
+      });
+      tb.appendChild(body); out.appendChild(tb);
+    }
+    const ref = (r.decisions.find(d=>d.step==="route")||{}).data||{};
+    if((ref.refused||[]).length){
+      out.appendChild(el("h3","mid",`${ref.refused.length} clips refused`));
+      ref.refused.forEach(x=>{
+        const s=el("div","step no");
+        s.appendChild(el("span","mk","STOP"));
+        s.appendChild(el("span","nm",x.clip.symbol+" "+usd(x.clip.quote_amount/1e6)));
+        s.appendChild(el("span","dt",x.reason));
+        out.appendChild(s);
+      });
+    }
+    if(r.fees && r.fees.clips){
+      out.appendChild(el("h3","mid","Strategist fee"));
+      out.appendChild(el("pre",null,
+        `volume      ${usd(r.fees.volume_usdc/1e6)}\nfee         ${r.fees.fee_bps} bps on volume`+
+        `\nstrategist  ${usd(r.fees.strategist_usdc/1e6)}\nprotocol    ${usd(r.fees.protocol_usdc/1e6)}`+
+        `\n\n${r.fees.basis}`));
+    }
+    if(r.warnings.length){
+      out.appendChild(el("h3","mid","Warnings"));
+      r.warnings.forEach(w=>out.appendChild(el("div","note",w)));
+    }
+  } finally { btn.disabled=false; btn.textContent="Run agent"; }
+};
+
+$("#t_go").onclick = async () => {
+  const btn=$("#t_go"); btn.disabled=true; btn.textContent="Reading…";
+  const out=$("#t_out"); out.innerHTML='<div class="empty">scanning Swap logs on Base…</div>';
+  try{
+    const r = await api(`/api/activity/${$("#t_sym").value}?blocks=${+$("#t_blocks").value}`);
+    out.innerHTML="";
+    if(r.error||!r.record){ out.appendChild(el("div","empty",r.error||r.note)); return; }
+    const k=r.record;
+    const c=el("div","cards");
+    const add=(n,l,cl)=>{const d=el("div","card"+(cl?" "+cl:""));
+      d.appendChild(el("div","n",n)); d.appendChild(el("div","l",l)); c.appendChild(d);};
+    add(k.fill_count,"onchain fills");
+    add(usd(k.quote_spent),"bought");
+    add(usd(k.quote_received),"sold");
+    add(usd(k.realised_pnl), "realised p&l", k.realised_pnl>=0?"good":"bad");
+    add(usd(k.cost_basis),"avg basis");
+    add(k.mark_certified?"certified":"uncertified","mark status",k.mark_certified?"good":"warn");
+    out.appendChild(c);
+    out.appendChild(el("div","note",k.coverage));
+    out.appendChild(el("h3","mid","Most recent fills"));
+    const tb=el("table");
+    tb.innerHTML="<thead><tr><th>block</th><th>side</th><th class='num'>size</th>"+
+      "<th class='num'>usdc</th><th class='num'>price</th><th>tx</th></tr></thead>";
+    const body=el("tbody");
+    k.fills.slice(-25).reverse().forEach(f=>{
+      const t=el("tr");
+      t.appendChild(el("td",null,f.block.toLocaleString()));
+      const s=el("td"); s.appendChild(el("span","pill "+(f.side==="buy"?"live":"dead"),f.side.toUpperCase()));
+      t.appendChild(s);
+      t.appendChild(el("td","num",f.base_amount.toFixed(6)));
+      t.appendChild(el("td","num",usd(f.quote_amount)));
+      t.appendChild(el("td","num",usd(f.price)));
+      const w=el("td"); const a=el("a",null,f.tx.slice(0,12)+"…");
+      a.href="https://basescan.org/tx/"+f.tx; a.target="_blank"; w.appendChild(a);
+      t.appendChild(w);
+      body.appendChild(t);
+    });
+    tb.appendChild(body); out.appendChild(tb);
+  } finally { btn.disabled=false; btn.textContent="Read the tape"; }
+};
+
+(async()=>{ await health(); await market(); await mandates(); setInterval(health,15000); })();
+</script>
+</body>
+</html>

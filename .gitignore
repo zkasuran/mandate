@@ -7,3 +7,6 @@ data/*.json
 DEMO-*.mp4
 upload-*/
 *.log
+contracts/lib/
+contracts/out/
+contracts/cache/

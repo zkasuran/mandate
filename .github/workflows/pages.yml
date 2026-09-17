@@ -30,6 +30,12 @@ jobs:
           node-version: '22'
       # The browser and the Python package must hash a mandate to the same id.
       - run: ./scripts/cross_check_id.sh
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Solidity tests
+        working-directory: contracts
+        run: |
+          forge install foundry-rs/forge-std --no-git
+          forge test -vv
 
   deploy:
     needs: test

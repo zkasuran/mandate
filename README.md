@@ -95,6 +95,7 @@ Python 3.11 or newer. No dependencies, no API key, no account.
 ./mandate.py token
 
 python3 -m unittest discover -s tests   # 74 offline tests
+cd contracts && forge test              # 24 solidity tests, 2 fuzz suites
 ./scripts/cross_check_id.sh             # browser and python agree on an id
 python3 api/server.py                   # agent-to-agent HTTP API
 ```
@@ -148,6 +149,30 @@ strategist kept their own published rules is a decidable question.
 
 Slashed bond goes **to the followers who were harmed**, in proportion to exposure, not to a
 treasury. The harmed party is the follower.
+
+### The bond is held by a contract
+
+[`contracts/src/MandateBond.sol`](contracts/src/MandateBond.sol), **24 Solidity tests
+including two fuzz suites**. What it claims is narrow on purpose:
+
+It does **not** verify fills onchain. Checking a slippage ceiling onchain means putting every
+fill and every venue quote there, which is not affordable, so promising it would be
+dishonest. What it does is make the two things that must be tamper proof tamper proof, then
+settle disputes with money rather than a committee:
+
+1. The **rules hash is stored at publication**, so what was promised is immutable and cannot
+   be re-pointed, by the strategist or by anyone else
+2. The **bond is held by the contract**, not by the strategist and not by us. It cannot be
+   withdrawn while followers are exposed
+3. A slash is opened by a **challenger staking their own money** on a claim computed from the
+   hashed rules and public fills. Unanswered claims execute permissionlessly once the window
+   closes. Disputed ones go to an arbiter named at deployment and public before anyone
+   subscribes. **A false claim pays its stake to the strategist**, which is what stops
+   griefing.
+
+```bash
+cd contracts && forge test        # 24 passed
+```
 
 Launched through Bankr on Robinhood Chain, where creator trading fees pay for the agent's
 own compute. Deliberately not: governance voting over which mandates are allowed, staking
@@ -206,7 +231,7 @@ Verified live, re-checkable by anyone:
 - 12 entry quotes and 6 protective exits, all signable EIP-712, against the live venue
 - Track records rebuilt from raw Uniswap `Swap` logs
 - Browser and Python hash a mandate to the same id, gated in CI
-- 74 offline tests
+- 74 offline Python tests, 24 Solidity tests including fuzz
 
 Not verified, stated rather than implied:
 
@@ -231,8 +256,11 @@ Not verified, stated rather than implied:
 Things a reviewer would find, listed here first:
 
 - Strategist fees are computed and owed, not escrowed. There is no settlement contract yet.
-- The bond is accounted for and slashed in software. It is not yet held by a contract, so
-  today it binds by arithmetic rather than by custody. That is the next thing to build.
+- The bond contract is written and tested but **not deployed**. Deploying costs gas. No
+  funds were moved for this build.
+- The arbiter is a single address. It only ever sees disputed claims. It is public before
+  anyone subscribes, but it is a trusted party and should say so rather than hide behind the
+  word decentralised.
 - Delegation lifecycle (webhook receipt, credential storage, revocation) is typed and wired
   but has no persistence layer.
 - The book is a JSON file. Publishing is unauthenticated. Fine for a judge, not for

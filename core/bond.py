@@ -37,6 +37,15 @@ SYMBOL = "MANDATE"
 CHAIN = "robinhood"          # launched through Bankr on Robinhood Chain
 QUOTE = "USDG"
 
+# The bond is held by `contracts/src/MandateBond.sol`, not by this process and
+# not by the strategist. What follows computes what a challenger should submit
+# to that contract. The contract does not verify fills onchain, because putting
+# every fill and every venue quote on chain is not affordable and promising it
+# would be dishonest. It makes the rules hash immutable, holds the money, then
+# settles disputes through a staked challenge. The arithmetic below is the open
+# part, so both sides of a dispute can run it.
+CONTRACT = "contracts/src/MandateBond.sol"
+
 # Bond required to publish a mandate, scaled to how much follower money the
 # strategist is asking to direct. A strategist steering more money posts more.
 BOND_FLOOR_USD = 250.0
@@ -216,10 +225,14 @@ def spec() -> dict:
                      "strategist loses for breaking their own published rules."),
              "enforceable": True},
             {"role": "Slashing to harmed followers",
-             "why": ("violations are decided by arithmetic over the hashed rules "
-                     "and public fills, then paid to the followers who were "
-                     "harmed rather than to a treasury"),
-             "enforceable": True},
+             "why": ("a challenger stakes their own money on a claim computed "
+                     "from the hashed rules and public fills. Unanswered claims "
+                     "execute permissionlessly after the window, disputed ones "
+                     "go to the arbiter named at deployment. A false claim "
+                     "pays its stake to the strategist. Slashed bond goes to "
+                     "the harmed followers rather than to a treasury"),
+             "enforceable": True,
+             "contract": CONTRACT},
             {"role": "Funding the agent",
              "why": ("creator trading fees from the Bankr launch pay for the "
                      "inference and execution the agent runs on, which is the "

@@ -38,6 +38,30 @@ Every number below came out of this repo against live chains. Re-run any of it.
 Against the deepest B20 pool on Base at **$46k** and 8,866 holders. So the universe resolves
 on Robinhood Chain. Base stays as the venue whose depth can be audited directly.
 
+### What the issuer can still do to your position
+
+Depth and ticker checks answer "can I trade this". Neither answers the question a follower
+should ask before committing money for a month. So `./mandate.py custody` reads the control
+surface off the chain:
+
+| | |
+|---|---|
+| Instruments that are upgradeable proxies | **8 of 8** |
+| Distinct beacons behind them | **1** |
+| Distinct implementations | **1** |
+| Powers in that implementation | `mint`, `burn`, `pause`, `unpause` |
+
+Every tokenized equity in the universe is a 283-byte beacon proxy in front of 11,614 bytes
+of shared logic. **All eight point at the same beacon**
+(`0xe10b6f6b275de231345c20d14ab812db62151b00`). One upgrade there changes the behaviour of
+every one of them at once.
+
+None of that is an accusation. A regulated issuer needs exactly these powers. A
+tokenized equity that could not be paused or reissued would be the surprising thing. What
+is wrong is taking a follower's money for a month without telling them the powers exist.
+So this is a disclosure and nothing blocks a trade on it. Refusing to trade a regulated
+equity for being pausable would refuse all of them.
+
 ### The ticker problem
 
 Resolving "NVDA" to a contract is the most dangerous step in the whole system. The venue's
@@ -92,9 +116,10 @@ Python 3.11 or newer. No dependencies, no API key, no account.
 ./mandate.py board
 ./mandate.py audit --mandate <id> --bond 300
 ./mandate.py tape --symbol AAPLc    # a track record rebuilt from chain logs
+./mandate.py custody                # what the issuer can still do to a position
 ./mandate.py token
 
-python3 -m unittest discover -s tests   # 74 offline tests
+python3 -m unittest discover -s tests   # 86 offline tests
 cd contracts && forge test              # 24 solidity tests, 2 fuzz suites
 ./scripts/cross_check_id.sh             # browser and python agree on an id
 python3 api/server.py                   # agent-to-agent HTTP API
@@ -247,10 +272,11 @@ Verified live, re-checkable by anyone:
 - Every address and selector, off both chains, by `./mandate.py verify`
 - Chain ids confirmed by `eth_chainId` before any read is trusted
 - The universe, the 61 refused lookalikes, the 46% ghost-pool figure
+- The control surface: 8 of 8 upgradeable, one shared beacon, read off the chain
 - 12 entry quotes and 6 protective exits, all signable EIP-712, against the live venue
 - Track records rebuilt from raw Uniswap `Swap` logs
 - Browser and Python hash a mandate to the same id, gated in CI
-- 74 offline Python tests, 24 Solidity unit tests including fuzz
+- 86 offline Python tests, 24 Solidity unit tests including fuzz
 - The bond lifecycle executed against the real USDG contract on a Robinhood Chain fork
 
 Not verified, stated rather than implied:
@@ -285,9 +311,11 @@ Things a reviewer would find, listed here first:
   but has no persistence layer.
 - The book is a JSON file. Publishing is unauthenticated. Fine for a judge, not for
   money.
-- Corporate actions. Robinhood tokens track an underlying that splits and pays dividends. A
-  track record spanning a split is not yet adjusted for it, which is a correctness gap, not
-  a stylistic one.
+- Corporate actions. The implementation behind these tokens carries `mint` and `burn` and
+  **no multiplier or rebase getter answered**, so a split is presumably handled by
+  reissuance rather than by scaling a factor. Either way a track record spanning one is not
+  adjusted yet, which is a correctness gap. An earlier draft of this README asserted a
+  multiplier mechanism before checking; `./mandate.py custody` is what settled it.
 - Exits are placed as resting quotes and never re-priced. A position that runs needs its
   stop trailed. Nothing does that yet.
 - Only the entry side has a depth-aware router. Exits size to the position and trust the

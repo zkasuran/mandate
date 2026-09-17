@@ -13,6 +13,7 @@
     ./mandate.py board                  the leaderboard
     ./mandate.py audit    --mandate ..  fills against the hashed rules
     ./mandate.py tape     --symbol ..   a track record rebuilt from chain logs
+    ./mandate.py custody                what the issuer can still do to a position
     ./mandate.py token                  what $MANDATE is for
 
 Everything reads live state. Nothing in here can move funds: the venue returns
@@ -24,7 +25,8 @@ import argparse
 import json
 import sys
 
-from core import (basis, bond, book, chains, exits, flash, spec, universe)
+from core import (basis, bond, book, chains, custody, exits, flash, spec,
+                  universe)
 from agent.executor import Executor
 
 FOLLOWER = "0xDB6c6340342e71A63cD11Ebac2185204b7777777"
@@ -289,6 +291,43 @@ def cmd_tape(args):
     return 0
 
 
+def cmd_custody(args):
+    """What the issuer can still do to a position after a follower takes it."""
+    u = universe.build(chain_key=args.chain)
+    s = custody.survey(u, args.chain)
+    rule(f"CONTROL SURFACE on {chains.get(args.chain).name}")
+    print(f"  upgradeable {len(s['upgradeable'])}/{len(s['instruments'])}   "
+          f"distinct beacons {s['distinct_beacons']}   "
+          f"distinct implementations {s['distinct_implementations']}")
+    for t, c in sorted(s["instruments"].items()):
+        print(f"\n  {t:6} {c['address']}  {c['proxy']} proxy, "
+              f"{c['proxy_bytes']} bytes in front of {c['logic_bytes']}")
+        if c["beacon"]:
+            print(f"         beacon {c['beacon']} -> {c['implementation']}")
+        for n in c["notes"]:
+            print(f"         {n}")
+    if s["powers_present"]:
+        rule("POWERS THE IMPLEMENTATION CARRIES")
+        seen = set()
+        for c in s["instruments"].values():
+            for p in c["powers"]:
+                if p["function"] in seen:
+                    continue
+                seen.add(p["function"])
+                print(f"  {p['function']:34} {p['selector']}")
+                print(f"     {p['means']}")
+    if s["concentration"]:
+        rule("CONCENTRATION")
+        for c in s["concentration"]:
+            print(f"  beacon {c['beacon']}")
+            print(f"    controls {', '.join(c['controls'])}")
+            print(f"    {c['note']}")
+    print(f"\n  {s['disclosure']}")
+    if args.json:
+        print(json.dumps(s, indent=1, default=str))
+    return 0
+
+
 def cmd_token(args):
     s = bond.spec()
     rule(f"${s['symbol']} on {s['chain']}, launched through {s['launch']}")
@@ -372,6 +411,8 @@ def main(argv=None):
     p.add_argument("--blocks", type=int, default=5_000)
     p.add_argument("--show", type=int, default=10)
     p.set_defaults(fn=cmd_tape)
+
+    sub.add_parser("custody").set_defaults(fn=cmd_custody)
 
     sub.add_parser("token").set_defaults(fn=cmd_token)
 

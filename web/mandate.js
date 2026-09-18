@@ -24,10 +24,13 @@ export const CHAINS = {
   },
   base: {
     key: 'base', name: 'Base', chainId: 8453,
+    // Browser-reachable and stable under load. 1rpc.io/base answers a single
+    // request fine but drops its CORS header on the error responses it returns
+    // once a scan is in flight, so it is server-side only. A preflight check
+    // passed it; the real traffic is what found it.
     rpc: ['https://mainnet.base.org',
           'https://base-rpc.publicnode.com',
-          'https://base.drpc.org',
-          'https://1rpc.io/base'],
+          'https://base.drpc.org'],
     explorer: 'https://basescan.org',
     quoteSymbol: 'USDC',
     quote: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -60,16 +63,26 @@ const SEL = {
 let rpcId = 0;
 let lastCall = 0;
 let nextEndpoint = 0;
-// Spacing was not the binding constraint. At 60ms a full ghost scan drew 46
-// rate-limit responses; slowing to 130ms drew 51. The cause was that every
-// call started on the same endpoint and only moved after being refused, so one
-// host absorbed the whole scan while three sat idle. Calls now start on a
-// rotating endpoint and the retry walks on from there.
-const MIN_GAP_MS = 70;
+let inFlight = 0;
+
+// Two separate problems, fixed separately.
+//
+// Rate limiting. At 60ms a full ghost scan drew 46 rate-limit responses.
+// Slowing to 130ms drew 51, because every call started on the same endpoint and
+// only moved after being refused. One host absorbed the whole scan while three
+// sat idle. Calls now start on a rotating endpoint, which took that to zero.
+//
+// Latency. A strict minimum gap also serialised every call, so a scan paid the
+// full network round trip about seventy times over and took 110 seconds. The
+// limit that matters is requests per second per host, not one request at a
+// time, so a few are allowed in flight together.
+const MIN_GAP_MS = 45;
+const MAX_IN_FLIGHT = 5;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function throttle() {
+  while (inFlight >= MAX_IN_FLIGHT) await sleep(15);
   const wait = MIN_GAP_MS - (Date.now() - lastCall);
   if (wait > 0) await sleep(wait);
   lastCall = Date.now();
@@ -79,11 +92,12 @@ export class RpcError extends Error {}
 
 export async function rpc(chainKey, method, params, { retries = 4 } = {}) {
   const eps = CHAINS[chainKey].rpc;
-  const start = nextEndpoint++;
+  const from = nextEndpoint++;
   let last;
   for (let i = 0; i < retries; i++) {
-    const url = eps[(start + i) % eps.length];
+    const url = eps[(from + i) % eps.length];
     await throttle();
+    inFlight++;
     try {
       const r = await fetch(url, {
         method: 'POST',
@@ -92,21 +106,25 @@ export async function rpc(chainKey, method, params, { retries = 4 } = {}) {
       });
       // Any non-2xx is the endpoint declining to answer, not the chain
       // answering. Rotating only on 429 and 5xx let a 410 from one host poison
-      // the read while three healthy hosts sat idle, which moved a ghost-pool
+      // a read while three healthy hosts sat idle, which moved a ghost-pool
       // count without reporting a single failure.
       if (!r.ok) {
         last = new RpcError(`${url} returned ${r.status}`);
-        await sleep(200 * 2 ** i);
-        continue;
+      } else {
+        const out = await r.json();
+        // A revert is a real answer from the chain, not a transport problem.
+        if (out.error) return { reverted: true, error: out.error };
+        return { result: out.result };
       }
-      const out = await r.json();
-      // A revert is a real answer from the chain, not a transport problem.
-      if (out.error) return { reverted: true, error: out.error };
-      return { result: out.result };
     } catch (e) {
       last = e;
-      await sleep(250 * 2 ** i);
+    } finally {
+      // Released on every path. An increment without a matching decrement
+      // would let the window fill and never drain, which is a deadlock rather
+      // than a slow page.
+      inFlight--;
     }
+    await sleep(200 * 2 ** i);
   }
   throw new RpcError(`${method} failed after ${retries} attempts: ${last?.message || last}`);
 }

@@ -667,8 +667,11 @@ $('#g_go').onclick=async()=>{
   const btn=$('#g_go');btn.disabled=true;btn.textContent='Scanning Base…';
   const out=$('#g_out');out.innerHTML='<div class="empty">reading Uniswap v3 on Base…</div>';
   try{
-    const counts={live:0,thin:0,dead:0,trapped:0};const boxes=[];const failures=[];
-    for(const [sym,addr] of Object.entries(B20)){
+    const counts={live:0,thin:0,dead:0,trapped:0};const failures=[];
+    // The tokens are independent, so they are scanned together. Walking them
+    // one at a time paid the network round trip about seventy times in series
+    // and took 110 seconds, which is long enough that the page looks broken.
+    const boxes=await Promise.all(Object.entries(B20).map(async ([sym,addr])=>{
       const rows=[];
       for(const fee of M.FEE_TIERS){
         // A pool that cannot be READ is not a pool that does not EXIST. Read
@@ -682,8 +685,8 @@ $('#g_go').onclick=async()=>{
           r.fee=fee;counts[r.status]++;rows.push(r);
         }catch(e){failures.push(`${sym} fee=${fee}: ${e.message}`);}
       }
-      boxes.push({sym,rows});
-    }
+      return {sym,rows};
+    }));
     out.innerHTML='';
     const c=el('div','cards');
     const add=(n,l,k)=>{const d=el('div','card'+(k?' '+k:''));d.appendChild(el('div','n',n));d.appendChild(el('div','l',l));c.appendChild(d);};
@@ -716,6 +719,10 @@ $('#g_go').onclick=async()=>{
         t.appendChild(w);body.appendChild(t);});
       tb.appendChild(body);bx.appendChild(tb);out.appendChild(bx);
     });
+  }catch(e){
+    out.innerHTML='';
+    out.appendChild(el('div','note','The scan could not complete: '+e.message+
+      '. Nothing is reported rather than a partial count, because a short scan reads as a clean market.'));
   } finally{btn.disabled=false;btn.textContent='Scan Uniswap v3 on Base';}
 };
 

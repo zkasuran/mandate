@@ -35,6 +35,11 @@ Every number below came out of this repo against live chains. Re-run any of it.
 | Liquidity | $3.18M | $2.77M | $1.45M | $895k | $725k | $672k | $336k | $294k |
 | Holders | 166k | 40.0k | 27.3k | 67.9k | 66.1k | 66.4k | 79.2k | 58.7k |
 
+**That table is a reading taken on 2026-09-17, not a constant.** NVDA moved from
+$3.18M to $4.01M and META from $1.22M to $2.77M inside one working session. Run
+the command for today's numbers. Anything here quoted to the dollar is quoted
+because it was measured, not because it is stable.
+
 Against the deepest B20 pool on Base at **$46k** and 8,866 holders. So the universe resolves
 on Robinhood Chain. Base stays as the venue whose depth can be audited directly.
 
@@ -291,8 +296,8 @@ Not verified, stated rather than implied:
 - **Fill simulation on Uniswap is in-range only.** Crossing a tick needs the initialized-tick
   bitmap, which is not fetched per quote, so a size beyond in-range capacity is reported as
   `exceeds_in_range` rather than extrapolated.
-- **Liquidity figures move.** META's went from $1.22M to $2.77M during one session. Any
-  number here is a reading, not a constant.
+- **Liquidity figures move.** META went from $1.22M to $2.77M and NVDA from $3.18M to
+  $4.01M inside one session. Every figure here is a reading, not a constant.
 - **The ghost scan in the browser covers USDC pairs only** and finds 10 pools at 40%
   unusable. The Python scan also walks WETH pairs and finds 13 at 46%. Both are stated so
   neither is mistaken for the other.

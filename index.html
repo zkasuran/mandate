@@ -1,0 +1,747 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mandate, copy trading that can't lie</title>
+<meta name="description" content="Strategies for tokenized stocks that anyone can follow and anyone can check. Live on Robinhood Chain.">
+<style>
+:root{
+  --bg:#0a0c10;--panel:#12161c;--panel2:#171c24;--line:#232b36;
+  --ink:#e9eef5;--dim:#8a96a6;--faint:#5b6674;
+  --accent:#ff6a3d;--good:#3ddc97;--warn:#ffc857;--bad:#ff5470;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+ font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+a{color:var(--accent)}
+header{border-bottom:1px solid var(--line);padding:16px 24px;display:flex;
+ align-items:baseline;gap:16px;flex-wrap:wrap;background:var(--panel)}
+h1{margin:0;font-size:20px;letter-spacing:-.02em}h1 b{color:var(--accent)}
+.tag{color:var(--dim);font-size:14px}.sp{flex:1}
+#hud{font:11.5px/1.5 var(--mono);color:var(--faint);text-align:right}
+#hud .on{color:var(--good)}#hud .off{color:var(--warn)}
+nav{display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--line);
+ background:var(--panel);overflow-x:auto}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);
+ padding:11px 15px;font-size:14px;cursor:pointer;white-space:nowrap}
+nav button:hover{color:var(--ink)}
+nav button.sel{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding:24px;max-width:1220px}
+section{display:none}section.sel{display:block}
+.lede{color:var(--dim);max-width:72ch;margin:0 0 20px}
+.lede strong{color:var(--ink);font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:10px;margin-bottom:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+.card .n{font:600 24px/1.2 var(--mono);letter-spacing:-.02em}
+.card .l{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;margin-top:4px}
+.card.bad .n{color:var(--bad)}.card.good .n{color:var(--good)}.card.warn .n{color:var(--warn)}
+table{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
+th{text-align:left;color:var(--faint);font-weight:500;font-size:10.5px;letter-spacing:.06em;
+ text-transform:uppercase;padding:8px 14px;border-bottom:1px solid var(--line)}
+td{padding:8px 14px;border-bottom:1px solid #1a2028;vertical-align:top}
+tr:last-child td{border-bottom:0}.num{text-align:right}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+ margin-bottom:14px;overflow:hidden}
+.box>h3{margin:0;padding:12px 15px;font-size:14px;display:flex;gap:9px;align-items:baseline;
+ border-bottom:1px solid var(--line);background:var(--panel2)}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;letter-spacing:.04em}
+.live,.ok{background:rgba(61,220,151,.13);color:var(--good)}
+.thin,.warnp{background:rgba(255,200,87,.13);color:var(--warn)}
+.dead,.nope{background:rgba(255,84,112,.13);color:var(--bad)}
+.trapped{background:rgba(255,84,112,.24);color:#ff8095}
+.why{color:var(--faint);font-size:11px;font-family:inherit;line-height:1.5;margin-top:3px}
+.why::before{content:"! ";color:var(--bad)}
+button.go{background:var(--accent);color:#140f0c;border:0;border-radius:7px;
+ padding:9px 17px;font-weight:600;font-size:14px;cursor:pointer}
+button.go:hover{filter:brightness(1.1)}button.go:disabled{opacity:.45;cursor:default}
+button.alt{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+ border-radius:7px;padding:9px 11px;font:13.5px var(--mono);width:100%}
+label{display:block;font-size:10.5px;color:var(--faint);text-transform:uppercase;
+ letter-spacing:.08em;margin:0 0 5px}
+.row{display:flex;gap:11px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.row>div{flex:1;min-width:125px}
+pre{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px;
+ overflow:auto;font:11.5px/1.55 var(--mono);color:var(--dim);max-height:420px;white-space:pre-wrap;word-break:break-word}
+.step{display:flex;gap:10px;padding:10px 13px;border:1px solid var(--line);
+ border-radius:8px;margin-bottom:6px;background:var(--panel);align-items:flex-start}
+.step .mk{font:600 10.5px var(--mono);padding:2px 7px;border-radius:5px;flex-shrink:0;margin-top:2px}
+.step.y .mk{background:rgba(61,220,151,.14);color:var(--good)}
+.step.n .mk{background:rgba(255,84,112,.14);color:var(--bad)}
+.step .nm{font:600 12.5px var(--mono);width:108px;flex-shrink:0}
+.step .dt{color:var(--dim);font-size:13px}
+.mid{font-size:12px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.09em}
+.empty{color:var(--faint);padding:24px;text-align:center;border:1px dashed var(--line);border-radius:9px}
+.note{border-left:2px solid var(--accent);padding:9px 13px;color:var(--dim);
+ background:var(--panel);font-size:13px;margin:14px 0;border-radius:0 7px 7px 0}
+.note b{color:var(--ink)}
+.mand{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:15px;margin-bottom:10px}
+.mand h4{margin:0 0 3px;font-size:15px}
+.mand .id{font:10.5px var(--mono);color:var(--faint);word-break:break-all}
+.mand .th{color:var(--dim);font-size:13px;margin:8px 0}
+.mand .legs{font:11.5px var(--mono);color:var(--accent)}
+footer{color:var(--faint);font-size:12px;padding:28px 24px;border-top:1px solid var(--line);margin-top:36px}
+.bar{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:7px 0}
+.bar>i{display:block;height:100%;background:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Mandate</b></h1>
+  <span class="tag">Copy trading that can't lie.</span>
+  <span class="sp"></span>
+  <div id="hud">starting…</div>
+</header>
+
+<nav>
+  <button data-t="universe" class="sel">Universe</button>
+  <button data-t="build">Publish</button>
+  <button data-t="run">Run agent</button>
+  <button data-t="folio">Portfolio</button>
+  <button data-t="board">Leaderboard</button>
+  <button data-t="bondtab">Bond &amp; audit</button>
+  <button data-t="ghosts">Ghost pools</button>
+  <button data-t="about">How it works</button>
+</nav>
+
+<main>
+
+<section id="universe" class="sel">
+  <p class="lede">Every name resolved twice: the venue's index says which contract a ticker
+  means, then the chain is asked whether that contract agrees. <strong>A ticker that fails
+  either check is refused, never traded.</strong></p>
+  <div class="cards" id="ucards"></div>
+  <div class="bar" id="ubar" style="display:none"><i style="width:0"></i></div>
+  <div id="ubody"><div class="empty">resolving against Robinhood Chain…</div></div>
+  <h3 class="mid">Rejected lookalikes</h3>
+  <p class="lede">These answered to a ticker they are not. <strong>NVDAx3L is a 3x leveraged
+  token</strong> deep enough to fool a resolver that ranks by liquidity. One symbol is a
+  comma-joined list of thousands of tickers built to match every search ever run against it.</p>
+  <div id="imps"><div class="empty">…</div></div>
+</section>
+
+<section id="build">
+  <p class="lede">A mandate is a strategy as an immutable ruleset. Its id is the SHA-256 of
+  the rules, so <strong>changing what it does changes its id</strong>. The strategist signs a
+  message containing that id, which commits the signature to the rules rather than to a name
+  that could later point somewhere else.</p>
+  <div class="row">
+    <div style="flex:2"><label>Name</label><input id="b_name" value="Compute &amp; Index"></div>
+    <div><label>Fee bps on volume</label><input id="b_fee" value="100"></div>
+    <div><label>Slices</label><input id="b_slices" value="4"></div>
+    <div><label>Max slippage bps</label><input id="b_slip" value="50"></div>
+    <div><label>Depth cover</label><input id="b_cover" value="3"></div>
+  </div>
+  <div class="row"><div style="flex:3"><label>Thesis</label>
+    <input id="b_thesis" value="Overweight the compute trade, anchored with a broad index sleeve. Accumulated in slices, never into a contract that has not been verified twice."></div></div>
+  <div class="row" id="legrow"></div>
+  <div class="row">
+    <div><label>Market hours</label><select id="b_mh">
+      <option value="0">allow 24/7 on an uncertified mark</option>
+      <option value="1">refuse outside the underlying session</option></select></div>
+    <div style="flex:0 0 auto"><button class="go" id="b_go">Publish mandate</button></div>
+  </div>
+  <div id="b_out"></div>
+  <h3 class="mid">Published</h3>
+  <div id="mlist"><div class="empty">none yet</div></div>
+</section>
+
+<section id="run">
+  <p class="lede">Nine gates, in order. Any one can refuse, because
+  <strong>a refusal is a result</strong>. This is the whole path an agent walks before it is
+  allowed to act in someone else's name.</p>
+  <div class="row">
+    <div style="flex:2"><label>Mandate</label><select id="r_m"></select></div>
+    <div><label>Sleeve USD</label><input id="r_size" value="5000"></div>
+    <div><label>Strategist bond USD</label><input id="r_bond" value="300"></div>
+    <div style="flex:0 0 auto"><button class="go" id="r_go">Run</button></div>
+  </div>
+  <div id="r_out"></div>
+</section>
+
+<section id="folio">
+  <p class="lede">Rebuilt by replaying every recorded fill. <strong>No balance is stored</strong>,
+  so what you see cannot drift from the fills underneath it.</p>
+  <div id="f_out"><div class="empty">run the agent first</div></div>
+</section>
+
+<section id="board">
+  <p class="lede">Ranked on followed volume and what actually happened, never on a
+  self-reported return. <strong>A self-reported return is the thing this replaces.</strong></p>
+  <div id="l_out"><div class="empty">publish a mandate first</div></div>
+</section>
+
+<section id="bondtab">
+  <p class="lede">Returns already cannot be faked, because they are recomputed from fills.
+  What a bond adds is a cost for publishing disciplined rules and then trading outside them.
+  <strong>Because the rules are a hash and the fills are public, whether a strategist kept
+  their own rules is arithmetic, not a committee.</strong></p>
+  <div id="bond_out"><div class="empty">run the agent first</div></div>
+  <h3 class="mid">Prove the audit can fail</h3>
+  <p class="lede">An audit that only ever returns clean is worth nothing. These inject
+  rule-breaking fills into the same checker and show it catch them.</p>
+  <div class="row">
+    <div style="flex:0 0 auto"><button class="go alt" id="v_wrong">Trade an instrument outside the mandate</button></div>
+    <div style="flex:0 0 auto"><button class="go alt" id="v_slip">Blow the published slippage ceiling</button></div>
+    <div style="flex:0 0 auto"><button class="go alt" id="v_hours">Trade out of hours</button></div>
+  </div>
+  <div id="v_out"></div>
+</section>
+
+<section id="ghosts">
+  <p class="lede">The same equities on Base, read straight off Uniswap v3. A pool that exists
+  is not a pool you can trade. <strong>The ones marked dead or trapped quote a price and
+  cannot fill anything.</strong> This is why depth is proven rather than assumed.</p>
+  <div class="row"><div style="flex:0 0 auto">
+    <button class="go" id="g_go">Scan Uniswap v3 on Base</button></div></div>
+  <div class="note"><b>Coverage.</b> This scan reads USDC pairs across all four fee tiers.
+  The Python scan in the repo also walks WETH pairs and finds 13 pools rather than 10, at
+  46% unusable rather than 40%. Both numbers are stated so neither is mistaken for the other.</div>
+  <div id="g_out"><div class="empty">not scanned yet</div></div>
+</section>
+
+<section id="about">
+  <div class="note"><b>The problem.</b> Copy trading runs on numbers you have to take someone's
+  word for. The platform holds your money, the star trader reports their own returns, you
+  find out afterwards.</div>
+  <div class="note"><b>The fix.</b> The strategy is a hash. The follower keeps their own wallet
+  under revocable delegation. Every fill is public, so returns are derived rather than claimed.
+  A strategist cannot inflate a number anyone can recompute.</div>
+  <div class="note"><b>What nobody handles.</b> Tokenized equity tickers are squatted. Liquidity
+  is fragmented and salted with pools that quote a price and hold nothing. The underlying
+  equity trades six and a half hours a day while the token trades all day. Mandate refuses on
+  all three rather than filling badly.</div>
+  <div class="note"><b>The token.</b> $MANDATE is the bond a strategist posts to take
+  followers. It is slashable to the followers who were harmed when the published rules are
+  broken. Launched through Bankr on Robinhood Chain, where creator trading fees pay for the
+  agent's own compute.</div>
+  <h3 class="mid">Check any of it yourself</h3>
+  <pre id="verify">This page has no backend. Every number on it was read from
+Robinhood Chain, Base and the Definitive Flash API from your own browser.
+
+  python3 scripts/verify_addresses.py    every address, off chain, live
+  python3 scripts/scan_market.py         the ghost pool scan
+  ./scripts/cross_check_id.sh            browser and python agree on a mandate id
+  python3 -m unittest discover -s tests  62 offline tests
+
+No API key needed.</pre>
+</section>
+
+</main>
+<footer>
+  Mandate. Built for Runtime Agent Week. Robinhood Chain and Base, Definitive Flash,
+  Uniswap v3. Prices are venue and pool prices read live. Not investment advice.
+</footer>
+
+<script type="module">
+import * as M from './mandate.js';
+
+const $=s=>document.querySelector(s);
+const el=(t,c,x)=>{const n=document.createElement(t);if(c)n.className=c;if(x!==undefined)n.textContent=x;return n;};
+const usd=(n,d=2)=>n==null?'-':'$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});
+const num=(n,d=0)=>n==null?'-':Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+const FOLLOWER='0xDB6c6340342e71A63cD11Ebac2185204b7777777';
+
+let UNIVERSE={}, MANDATES=[], FILLS=[], LASTRUN=null;
+const LS='mandate.v1';
+function save(){try{localStorage.setItem(LS,JSON.stringify({MANDATES,FILLS}))}catch{}}
+function load(){try{const d=JSON.parse(localStorage.getItem(LS)||'{}');MANDATES=d.MANDATES||[];FILLS=d.FILLS||[]}catch{}}
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('sel'));
+  document.querySelectorAll('section').forEach(x=>x.classList.remove('sel'));
+  b.classList.add('sel');$('#'+b.dataset.t).classList.add('sel');
+  if(b.dataset.t==='folio')renderFolio();
+  if(b.dataset.t==='board')renderBoard();
+  if(b.dataset.t==='bondtab')renderBond();
+});
+
+async function hud(){
+  const s=M.sessionState();
+  let blk='';
+  try{blk=`rh block ${Number(await M.rpcValue('robinhood','eth_blockNumber',[])).toLocaleString()}`}catch{blk='rpc unreachable'}
+  $('#hud').innerHTML=`${blk} &middot; chain 4663<br>underlying market `+
+    `<span class="${s.open?'on':'off'}">${s.open?'OPEN':'CLOSED'}</span> &middot; ${s.reason}`;
+}
+
+// --- universe ---------------------------------------------------------------
+async function loadUniverse(){
+  const bar=$('#ubar');bar.style.display='block';
+  let done=0;
+  UNIVERSE=await M.buildUniverse(M.TICKERS,'robinhood',()=>{
+    done++;bar.firstElementChild.style.width=(done/M.TICKERS.length*100)+'%';
+  });
+  bar.style.display='none';
+  renderUniverse();
+  fillLegPickers();
+}
+
+function renderUniverse(){
+  const rows=Object.values(UNIVERSE);
+  const ok=rows.filter(r=>r.verified);
+  const imps=rows.flatMap(r=>(r.impostors||[]).map(i=>({...i,ticker:r.ticker})));
+  const c=$('#ucards');c.innerHTML='';
+  let step=0;
+  const add=(n,l,k)=>{const d=el('div','card'+(k?' '+k:''));
+    d.setAttribute('data-step',String(++step));
+    d.appendChild(el('div','n',n));d.appendChild(el('div','l',l));c.appendChild(d);};
+  add(`${ok.length}/${rows.length}`,'verified','good');
+  add(usd(ok.reduce((a,r)=>a+(r.liquidity||0),0),0),'venue liquidity');
+  add(usd(ok.reduce((a,r)=>a+(r.volume24h||0),0),0),'24h volume');
+  add(num(ok.reduce((a,r)=>a+(r.holders||0),0)),'holders');
+  add(imps.length,'lookalikes refused','bad');
+  add(usd(imps.reduce((a,i)=>a+(i.liquidity||0),0),0),'held by lookalikes','warn');
+
+  const b=$('#ubody');b.innerHTML='';
+  const box=el('div','box'),tb=el('table');
+  tb.innerHTML="<thead><tr><th>ticker</th><th></th><th class='num'>price</th>"+
+    "<th class='num'>liquidity</th><th class='num'>24h volume</th><th class='num'>holders</th><th>contract</th></tr></thead>";
+  const body=el('tbody');
+  rows.sort((a,b)=>(b.liquidity||0)-(a.liquidity||0)).forEach(r=>{
+    const t=el('tr');
+    t.appendChild(el('td',null,r.ticker));
+    const s=el('td');s.appendChild(el('span','pill '+(r.verified?'ok':'nope'),r.verified?'VERIFIED':'REFUSED'));t.appendChild(s);
+    t.appendChild(el('td','num',usd(r.price)));
+    t.appendChild(el('td','num',usd(r.liquidity,0)));
+    t.appendChild(el('td','num',usd(r.volume24h,0)));
+    t.appendChild(el('td','num',num(r.holders)));
+    const w=el('td');
+    if(r.address){const a=el('a',null,r.address.slice(0,12)+'…');
+      a.href=M.CHAINS.robinhood.explorer+'/address/'+r.address;a.target='_blank';w.appendChild(a);
+      w.appendChild(el('div','why2',''));
+      const nm=el('div');nm.style.cssText='color:var(--faint);font-size:11px;font-family:inherit';
+      nm.textContent=r.name||'';w.appendChild(nm);}
+    (r.notes||[]).forEach(n=>w.appendChild(el('div','why',n)));
+    t.appendChild(w);body.appendChild(t);
+  });
+  tb.appendChild(body);box.appendChild(tb);b.appendChild(box);
+
+  const ib=$('#imps');ib.innerHTML='';
+  if(!imps.length){ib.appendChild(el('div','empty','none'));return;}
+  const it=el('table');
+  it.innerHTML="<thead><tr><th>asked for</th><th>answered</th><th class='num'>liquidity</th>"+
+    "<th class='num'>holders</th><th>why refused</th></tr></thead>";
+  const ibody=el('tbody');
+  imps.sort((a,b)=>(b.liquidity||0)-(a.liquidity||0)).slice(0,24).forEach(i=>{
+    const t=el('tr');
+    t.appendChild(el('td',null,i.ticker));
+    const s=el('td');const sym=el('span','pill nope',i.symbol.slice(0,26)+(i.symbol.length>26?'…':''));s.appendChild(sym);t.appendChild(s);
+    t.appendChild(el('td','num',usd(i.liquidity,0)));
+    t.appendChild(el('td','num',num(i.holders)));
+    t.appendChild(el('td',null,i.why));
+    ibody.appendChild(t);
+  });
+  it.appendChild(ibody);const ibox=el('div','box');ibox.appendChild(it);ib.appendChild(ibox);
+}
+
+// --- publish ----------------------------------------------------------------
+function fillLegPickers(){
+  const ok=Object.values(UNIVERSE).filter(r=>r.verified);
+  const row=$('#legrow');row.innerHTML='';
+  [['A',0,40],['B',1,30],['C',2,30]].forEach(([lbl,idx,w])=>{
+    const d=el('div');
+    d.appendChild(el('label',null,`Leg ${lbl} / weight %`));
+    const wrap=el('div');wrap.style.cssText='display:flex;gap:6px';
+    const sel=el('select');sel.id='leg_'+lbl;
+    const none=el('option',null,'none');none.value='';sel.appendChild(none);
+    ok.forEach(r=>{const o=el('option',null,r.ticker);o.value=r.ticker;sel.appendChild(o);});
+    if(ok[idx])sel.value=ok[idx].ticker;
+    const wi=el('input');wi.id='w_'+lbl;wi.value=String(w);wi.style.maxWidth='72px';
+    wrap.appendChild(sel);wrap.appendChild(wi);d.appendChild(wrap);row.appendChild(d);
+  });
+}
+
+$('#b_go').onclick=async()=>{
+  const btn=$('#b_go');btn.disabled=true;btn.textContent='Hashing…';
+  try{
+    const legs=[];
+    for(const lbl of ['A','B','C']){
+      const tk=$('#leg_'+lbl)?.value;const w=Number($('#w_'+lbl)?.value||0);
+      if(!tk||!w)continue;
+      const inst=UNIVERSE[tk];
+      legs.push({symbol:tk,token:inst.address,weight_bps:Math.round(w*100)});
+    }
+    const total=legs.reduce((a,l)=>a+l.weight_bps,0);
+    const out=$('#b_out');out.innerHTML='';
+    if(!legs.length){out.appendChild(el('div','note','Pick at least one leg.'));return;}
+    if(total!==10000){
+      out.appendChild(el('div','note',`Weights must sum to 100%, they sum to ${(total/100).toFixed(1)}%. `+
+        `This is refused rather than normalised, because silently rescaling a strategist's weights changes the strategy.`));
+      return;
+    }
+    const rules=M.buildRules({legs,
+      execution:{kind:'twap',slices:Number($('#b_slices').value),interval_seconds:900,
+        max_slippage_bps:Number($('#b_slip').value),min_depth_multiple:Number($('#b_cover').value),
+        require_market_hours:$('#b_mh').value==='1'},
+      risk:{stop_loss_bps:800,take_profit_bps:1500,max_position_bps:10000,max_daily_orders:12},
+      feeBps:Number($('#b_fee').value),chainId:4663});
+    const id=await M.mandateId(rules);
+    if(MANDATES.some(m=>m.mandate_id===id)){
+      out.appendChild(el('div','note','Identical rules are already published under '+id));
+      return;
+    }
+    const rec={mandate_id:id,name:$('#b_name').value,strategist:FOLLOWER.toLowerCase(),
+      thesis:$('#b_thesis').value,rules};
+    MANDATES.push(rec);save();renderMandates();
+    out.appendChild(el('pre',null,M.signingMessage(id,rec.name,rec.strategist,4663,rules.fee_bps)));
+    out.appendChild(el('div','note','Canonical rules the id was taken over:'));
+    out.appendChild(el('pre',null,M.canonical(rules)));
+  } finally{btn.disabled=false;btn.textContent='Publish mandate';}
+};
+
+function renderMandates(){
+  const w=$('#mlist');w.innerHTML='';
+  const sel=$('#r_m');sel.innerHTML='';
+  if(!MANDATES.length){w.appendChild(el('div','empty','none yet'));return;}
+  MANDATES.forEach(m=>{
+    const d=el('div','mand');
+    d.appendChild(el('h4',null,m.name));
+    d.appendChild(el('div','id',m.mandate_id));
+    d.appendChild(el('div','th',m.thesis));
+    d.appendChild(el('div','legs',
+      m.rules.legs.map(l=>`${l.symbol} ${(l.weight_bps/100).toFixed(0)}%`).join('  ·  ')+
+      `   |  ${m.rules.execution.kind} x${m.rules.execution.slices}  |  slip ${m.rules.execution.max_slippage_bps}bps`+
+      `  |  cover ${m.rules.execution.min_depth_multiple}x  |  ${m.rules.execution.require_market_hours?'market hours only':'24/7'}`+
+      `  |  fee ${m.rules.fee_bps}bps`));
+    w.appendChild(d);
+    const o=el('option',null,m.name+' · '+m.mandate_id.slice(0,20)+'…');o.value=m.mandate_id;sel.appendChild(o);
+  });
+}
+
+// --- run --------------------------------------------------------------------
+$('#r_go').onclick=async()=>{
+  const btn=$('#r_go');btn.disabled=true;btn.textContent='Running…';
+  const out=$('#r_out');out.innerHTML='<div class="empty">quoting against the venue…</div>';
+  try{
+    const m=MANDATES.find(x=>x.mandate_id===$('#r_m').value);
+    if(!m){out.innerHTML='<div class="empty">publish a mandate first</div>';return;}
+    const sleeve=Number($('#r_size').value), posted=Number($('#r_bond').value);
+    const steps=[];out.innerHTML='';
+    const push=(nm,ok,dt)=>{steps.push({nm,ok,dt});
+      const s=el('div','step '+(ok?'y':'n'));
+      s.appendChild(el('span','mk',ok?'PASS':'STOP'));
+      s.appendChild(el('span','nm',nm));s.appendChild(el('span','dt',dt));
+      out.appendChild(s);return ok;};
+
+    push('subscription',true,`follower ${FOLLOWER.slice(0,10)}… sleeve ${usd(sleeve)}`);
+
+    const need=M.requiredBond(sleeve);
+    if(!push('bond',posted>=need,
+      `strategist posted ${usd(posted)} against ${usd(need)} required for ${usd(sleeve)} of committed follower money`)){
+      out.appendChild(el('div','note',`Short by ${usd(need-posted)}. A mandate that cannot be slashed cannot take followers.`));
+      return;}
+
+    const s=M.sessionState();
+    const hoursOnly=m.rules.execution.require_market_hours;
+    if(!push('market hours',s.open||!hoursOnly,
+      s.open?'underlying market is open':(hoursOnly?`blocked: ${s.reason}`:`mandate allows 24/7, proceeding on an uncertified mark (${s.reason})`)))return;
+
+    const bad=m.rules.legs.filter(l=>!UNIVERSE[l.symbol.toUpperCase()]?.verified).map(l=>l.symbol);
+    if(!push('universe',!bad.length,
+      `${m.rules.legs.length-bad.length}/${m.rules.legs.length} legs resolve to a verified contract`+
+      (bad.length?`; refused ${bad.join(', ')}`:'')))return;
+
+    const plan=M.buildPlan(m.rules,UNIVERSE,sleeve);
+    if(!push('plan',plan.clips.length>0,
+      `${plan.clips.length} clips, ${plan.protections.length} protective exits`))return;
+
+    const fills=[],refused=[];
+    for(const clip of plan.clips){
+      const inst=UNIVERSE[clip.symbol];
+      const ex=m.rules.execution;
+      const body={targetChain:'robinhood',contraChain:'robinhood',
+        targetAsset:inst.address,contraAsset:M.CHAINS.robinhood.quote,
+        side:'buy',qty:clip.spendUsd.toFixed(6),orderType:ex.kind,
+        funderAddress:FOLLOWER,maxSlippage:(ex.max_slippage_bps/10000).toFixed(6)};
+      if(ex.kind==='twap'){body.durationSeconds=Math.max(300,ex.interval_seconds*ex.slices);
+        body.twapBucketCount=Math.max(2,ex.slices);}
+      let q;
+      try{q=await M.flashQuote(body);}
+      catch(e){refused.push({ticker:clip.symbol,spendUsd:clip.spendUsd,reason:e.message});continue;}
+      const recv=Number(q.to?.amount||0);
+      const price=recv?clip.spendUsd/recv:0;
+      const slip=inst.price?Math.round((price-inst.price)/inst.price*10000):null;
+      if(slip!=null&&slip>ex.max_slippage_bps){
+        refused.push({ticker:clip.symbol,spendUsd:clip.spendUsd,
+          reason:`quoted ${slip}bps against a ${ex.max_slippage_bps}bps ceiling`});continue;}
+      const cover=inst.liquidity/clip.spendUsd;
+      if(cover<ex.min_depth_multiple){
+        refused.push({ticker:clip.symbol,spendUsd:clip.spendUsd,
+          reason:`venue depth ${usd(inst.liquidity,0)} is ${cover.toFixed(1)}x the clip against a required ${ex.min_depth_multiple}x`});continue;}
+      fills.push({fillId:'fil_'+Math.random().toString(16).slice(2,12),
+        mandateId:m.mandate_id,follower:FOLLOWER.toLowerCase(),ticker:clip.symbol,
+        address:inst.address,side:'buy',spendUsd:clip.spendUsd,quantity:recv,price,
+        quoteId:q.quoteId,orderType:q.orderType,slippageBps:slip,depthCover:cover,
+        markCertified:s.open,feeUsd:clip.spendUsd*m.rules.fee_bps/10000,
+        hasTypedData:!!q.evm?.orderTypedData,needsApproval:!!q.evm?.approveTx,at:Date.now()+fills.length});
+    }
+    push('quote',fills.length>0,`${fills.length} clips quoted and gated, ${refused.length} refused`);
+    // 8. protect what was just opened, off the basis the fills actually produced
+    let eplan={exits:[],warnings:[]}, cover={fullyProtected:true,coveragePct:100,legsWithNoStop:[]};
+    if(fills.length){
+      const holdings={};
+      M.portfolio(fills,{}).holdings.forEach(h=>holdings[h.ticker]={quantity:h.quantity,costBasis:h.costBasis});
+      eplan=M.deriveExits(m.rules,holdings,UNIVERSE);
+      if(eplan.exits.length){
+        await M.placeExits(eplan.exits,'robinhood',FOLLOWER,
+          Math.max(100,m.rules.execution.max_slippage_bps));
+      }
+      cover=M.exitCoverage(eplan.exits,holdings);
+      const placed=eplan.exits.filter(e=>e.placed).length;
+      push('protect',cover.fullyProtected,
+        `${placed}/${eplan.exits.length} protective exits resting at the venue, `+
+        `${cover.coveragePct.toFixed(0)}% of legs carry a live stop`+
+        (cover.fullyProtected?'':`; exposed: ${cover.legsWithNoStop.join(', ')}`));
+    }
+
+    push('execute',false,'dry run: quotes are real and signable, nothing was sent. Broadcasting needs a signature from the follower wallet. This page holds no key.');
+
+    if(eplan.exits.length){
+      out.appendChild(el('h3','mid',`${eplan.exits.filter(e=>e.placed).length}/${eplan.exits.length} protective exits resting`));
+      const tb=el('table');
+      tb.innerHTML="<thead><tr><th>kind</th><th>leg</th><th class='num'>quantity</th>"+
+        "<th class='num'>trigger</th><th class='num'>from basis</th><th>type</th><th>placed</th></tr></thead>";
+      const body=el('tbody');
+      eplan.exits.forEach(e=>{const t=el('tr');
+        t.appendChild(el('td',null,e.kind.replace('_',' ')));
+        t.appendChild(el('td',null,e.ticker));
+        t.appendChild(el('td','num',e.quantity.toFixed(6)));
+        t.appendChild(el('td','num',usd(e.triggerPrice)));
+        t.appendChild(el('td','num',(e.bpsFromReference>0?'+':'')+e.bpsFromReference+'bps'));
+        t.appendChild(el('td',null,e.orderType||'-'));
+        const s2=el('td');s2.appendChild(el('span','pill '+(e.placed?'ok':'nope'),e.placed?'RESTING':'FAILED'));t.appendChild(s2);
+        body.appendChild(t);});
+      tb.appendChild(body);const bx=el('div','box');bx.appendChild(tb);out.appendChild(bx);
+      if(!cover.fullyProtected)out.appendChild(el('div','note',
+        `Position is only partially protected: ${cover.legsWithNoStop.join(', ')} has no live stop.`));
+      eplan.warnings.forEach(w=>out.appendChild(el('div','note',w)));
+    }
+
+    if(fills.length){
+      FILLS.push(...fills);save();
+      out.appendChild(el('h3','mid',`${fills.length} clips built`));
+      const tb=el('table');
+      tb.innerHTML="<thead><tr><th>leg</th><th class='num'>size</th><th class='num'>fill</th>"+
+        "<th class='num'>slip</th><th class='num'>cover</th><th>type</th><th>quote id</th><th>signable</th></tr></thead>";
+      const body=el('tbody');
+      fills.forEach(f=>{const t=el('tr');
+        t.appendChild(el('td',null,f.ticker));
+        t.appendChild(el('td','num',usd(f.spendUsd)));
+        t.appendChild(el('td','num',usd(f.price)));
+        t.appendChild(el('td','num',f.slippageBps+'bps'));
+        t.appendChild(el('td','num',num(f.depthCover)+'x'));
+        t.appendChild(el('td',null,f.orderType));
+        t.appendChild(el('td',null,(f.quoteId||'').slice(0,8)+'…'));
+        const s2=el('td');s2.appendChild(el('span','pill '+(f.hasTypedData?'ok':'nope'),f.hasTypedData?'EIP-712':'no'));t.appendChild(s2);
+        body.appendChild(t);});
+      tb.appendChild(body);const bx=el('div','box');bx.appendChild(tb);out.appendChild(bx);
+      const vol=fills.reduce((a,f)=>a+f.spendUsd,0);
+      const fee=fills.reduce((a,f)=>a+f.feeUsd,0);
+      out.appendChild(el('div','note',`Volume ${usd(vol)}. Strategist fee ${usd(fee*0.9)} at `+
+        `${m.rules.fee_bps}bps on volume, protocol ${usd(fee*0.1)}. Charged on volume, never on an unverifiable mark.`));
+    }
+    if(refused.length){
+      out.appendChild(el('h3','mid',`${refused.length} clips refused`));
+      refused.forEach(r=>{const s3=el('div','step n');
+        s3.appendChild(el('span','mk','STOP'));
+        s3.appendChild(el('span','nm',r.ticker+' '+usd(r.spendUsd)));
+        s3.appendChild(el('span','dt',r.reason));out.appendChild(s3);});
+    }
+    plan.warnings.forEach(w=>out.appendChild(el('div','note',w)));
+    if(!s.open)out.appendChild(el('div','note','Marks are uncertified: the underlying equity market is closed, so nothing is arbitraging these tokens back to their underlying.'));
+    LASTRUN={mandate:m,posted,fills};
+  } finally{btn.disabled=false;btn.textContent='Run';}
+};
+
+// --- portfolio --------------------------------------------------------------
+function marks(){const m={};Object.values(UNIVERSE).forEach(r=>{if(r.verified)m[r.ticker]=r.price});return m;}
+
+function renderFolio(){
+  const out=$('#f_out');out.innerHTML='';
+  if(!FILLS.length){out.innerHTML='<div class="empty">run the agent first</div>';return;}
+  const p=M.portfolio(FILLS,marks());
+  const c=el('div','cards');
+  const add=(n,l,k)=>{const d=el('div','card'+(k?' '+k:''));d.appendChild(el('div','n',n));d.appendChild(el('div','l',l));c.appendChild(d);};
+  add(usd(p.marketValue),'market value');
+  add(usd(p.unrealisedPnl),'unrealised',p.unrealisedPnl>=0?'good':'bad');
+  add(usd(p.realisedPnl),'realised',p.realisedPnl>=0?'good':'bad');
+  add(p.fillCount,'fills');
+  out.appendChild(c);
+  const tb=el('table');
+  tb.innerHTML="<thead><tr><th>ticker</th><th class='num'>quantity</th><th class='num'>avg basis</th>"+
+    "<th class='num'>mark</th><th class='num'>value</th><th class='num'>p&amp;l</th><th class='num'>return</th></tr></thead>";
+  const body=el('tbody');
+  p.holdings.forEach(h=>{const t=el('tr');
+    t.appendChild(el('td',null,h.ticker));
+    t.appendChild(el('td','num',h.quantity.toFixed(6)));
+    t.appendChild(el('td','num',usd(h.costBasis)));
+    t.appendChild(el('td','num',usd(h.mark)));
+    t.appendChild(el('td','num',usd(h.marketValue)));
+    t.appendChild(el('td','num',usd(h.totalPnl)));
+    t.appendChild(el('td','num',h.returnPct==null?'-':h.returnPct.toFixed(2)+'%'));
+    body.appendChild(t);});
+  tb.appendChild(body);const bx=el('div','box');bx.appendChild(tb);out.appendChild(bx);
+  out.appendChild(el('div','note','Rebuilt by replaying every fill above. Nothing is cached, so this cannot disagree with the fills that produced it.'));
+}
+
+function renderBoard(){
+  const out=$('#l_out');out.innerHTML='';
+  if(!MANDATES.length){out.innerHTML='<div class="empty">publish a mandate first</div>';return;}
+  const mk=marks();
+  const tb=el('table');
+  tb.innerHTML="<thead><tr><th>mandate</th><th class='num'>fee</th><th class='num'>fills</th>"+
+    "<th class='num'>volume</th><th class='num'>strategist fees</th><th class='num'>p&amp;l</th></tr></thead>";
+  const body=el('tbody');
+  MANDATES.map(m=>{
+    const f=FILLS.filter(x=>x.mandateId===m.mandate_id);
+    const p=M.portfolio(f,mk);
+    return {m,vol:f.reduce((a,x)=>a+x.spendUsd,0),fees:f.reduce((a,x)=>a+x.feeUsd,0),fills:f.length,pnl:p.totalPnl};
+  }).sort((a,b)=>b.vol-a.vol).forEach(r=>{
+    const t=el('tr');
+    const c1=el('td');c1.appendChild(el('div',null,r.m.name));
+    const idl=el('div');idl.style.cssText='color:var(--faint);font-size:10.5px';idl.textContent=r.m.mandate_id.slice(0,26)+'…';
+    c1.appendChild(idl);t.appendChild(c1);
+    t.appendChild(el('td','num',r.m.rules.fee_bps+'bps'));
+    t.appendChild(el('td','num',String(r.fills)));
+    t.appendChild(el('td','num',usd(r.vol)));
+    t.appendChild(el('td','num',usd(r.fees)));
+    t.appendChild(el('td','num',usd(r.pnl)));
+    body.appendChild(t);});
+  tb.appendChild(body);const bx=el('div','box');bx.appendChild(tb);out.appendChild(bx);
+  out.appendChild(el('div','note','Ranked on followed volume and recomputed outcome. No strategist supplies a number to this table.'));
+}
+
+// --- bond + audit -----------------------------------------------------------
+function renderAudit(target,rules,fills,posted,heading){
+  const out=$(target);out.innerHTML='';
+  const a=M.audit(rules,fills,UNIVERSE);
+  const c=el('div','cards');
+  const add=(n,l,k)=>{const d=el('div','card'+(k?' '+k:''));d.appendChild(el('div','n',n));d.appendChild(el('div','l',l));c.appendChild(d);};
+  add(a.fillsChecked,'fills checked');
+  add(a.clean?'CLEAN':'BROKEN','verdict',a.clean?'good':'bad');
+  add((a.slashBps/100).toFixed(0)+'%','of bond slashed',a.slashBps?'bad':'good');
+  add(usd(posted),'bond posted');
+  out.appendChild(el('h3','mid',heading));
+  out.appendChild(c);
+  if(a.violations.length){
+    a.violations.forEach(v=>{const s=el('div','step n');
+      s.appendChild(el('span','mk','BREACH'));
+      s.appendChild(el('span','nm',v.kind.replace(/_/g,' ')));
+      s.appendChild(el('span','dt',v.detail+`  (harm ${usd(v.harmedUsd)})`));
+      out.appendChild(s);});
+    const st=M.settle(posted,a);
+    out.appendChild(el('div','note',`Slashed ${usd(st.slashedUsd)} of the ${usd(posted)} bond.`));
+    st.payouts.forEach(p=>out.appendChild(el('div','note',
+      `${p.follower.slice(0,14)}… receives ${usd(p.payoutUsd)}, ${(p.share*100).toFixed(1)}% of total harm. Paid to the harmed follower, not to a treasury.`)));
+  } else {
+    out.appendChild(el('div','note','Every fill matched the rules hashed into the mandate id. Nothing discretionary was applied.'));
+  }
+}
+
+function renderBond(){
+  if(!LASTRUN){$('#bond_out').innerHTML='<div class="empty">run the agent first</div>';return;}
+  renderAudit('#bond_out',LASTRUN.mandate.rules,LASTRUN.fills,LASTRUN.posted,'Audit of the real run');
+}
+
+function injectViolation(kind){
+  if(!LASTRUN||!LASTRUN.fills.length){$('#v_out').innerHTML='<div class="empty">run the agent first</div>';return;}
+  const base={...LASTRUN.fills[0]};
+  if(kind==='wrong'){base.ticker='TSLA';base.fillId='fil_wrong';}
+  if(kind==='slip'){base.slippageBps=420;base.fillId='fil_slip';}
+  if(kind==='hours'){base.markCertified=false;base.fillId='fil_hours';}
+  const rules=JSON.parse(JSON.stringify(LASTRUN.mandate.rules));
+  if(kind==='hours')rules.execution.require_market_hours=true;
+  renderAudit('#v_out',rules,[base],LASTRUN.posted,'Injected violation');
+}
+$('#v_wrong').onclick=()=>injectViolation('wrong');
+$('#v_slip').onclick=()=>injectViolation('slip');
+$('#v_hours').onclick=()=>injectViolation('hours');
+
+// --- ghost pools ------------------------------------------------------------
+const B20={AAPLc:'0xb200000000000000000000C2e324d24d7eEcd1fb',
+  GOOGLc:'0xb2000000000000000000002D0BA3164cc74f58B7',
+  METAc:'0xb2000000000000000000008bC8786B856E61707C',
+  NVDAc:'0xb20000000000000000000078ee7ce2fE4908108C'};
+
+$('#g_go').onclick=async()=>{
+  const btn=$('#g_go');btn.disabled=true;btn.textContent='Scanning Base…';
+  const out=$('#g_out');out.innerHTML='<div class="empty">reading Uniswap v3 on Base…</div>';
+  try{
+    const counts={live:0,thin:0,dead:0,trapped:0};const failures=[];
+    // The tokens are independent, so they are scanned together. Walking them
+    // one at a time paid the network round trip about seventy times in series
+    // and took 110 seconds, which is long enough that the page looks broken.
+    const boxes=await Promise.all(Object.entries(B20).map(async ([sym,addr])=>{
+      const rows=[];
+      for(const fee of M.FEE_TIERS){
+        // A pool that cannot be READ is not a pool that does not EXIST. Read
+        // failures are surfaced rather than folded into the counts, because a
+        // silently short scan reads as a clean market.
+        try{
+          const pool=await M.getPool(addr,M.CHAINS.base.quote,fee);
+          if(!pool)continue;
+          const r=await M.poolReport(pool,addr,8);
+          if(!r){failures.push(`${sym} fee=${fee}: pool exists but did not answer`);continue;}
+          r.fee=fee;counts[r.status]++;rows.push(r);
+        }catch(e){failures.push(`${sym} fee=${fee}: ${e.message}`);}
+      }
+      return {sym,rows};
+    }));
+    out.innerHTML='';
+    const c=el('div','cards');
+    const add=(n,l,k)=>{const d=el('div','card'+(k?' '+k:''));d.appendChild(el('div','n',n));d.appendChild(el('div','l',l));c.appendChild(d);};
+    const total=Object.values(counts).reduce((a,b)=>a+b,0);
+    add(total,'pools found');add(counts.live,'live','good');add(counts.thin,'thin','warn');
+    add(counts.dead+counts.trapped,'dead or trapped','bad');
+    add(total?Math.round((counts.dead+counts.trapped)/total*100)+'%':'-','unusable','bad');
+    out.appendChild(c);
+    if(failures.length){
+      out.appendChild(el('div','note',
+        `${failures.length} pools could not be read and are excluded from these counts: `+
+        failures.join('; ')));
+    }
+    boxes.forEach(({sym,rows})=>{
+      const bx=el('div','box'),h=el('h3');h.appendChild(el('span',null,sym));bx.appendChild(h);
+      const tb=el('table');
+      tb.innerHTML="<thead><tr><th>status</th><th>fee</th><th class='num'>quoted price</th>"+
+        "<th class='num'>depth held</th><th class='num'>tick</th><th>pool</th></tr></thead>";
+      const body=el('tbody');
+      rows.forEach(r=>{const t=el('tr');
+        const s=el('td');s.appendChild(el('span','pill '+r.status,r.status.toUpperCase()));t.appendChild(s);
+        t.appendChild(el('td',null,(r.fee/10000).toFixed(2)+'%'));
+        const px=el('td','num');px.textContent=r.price>1e12?r.price.toExponential(3):usd(r.price);
+        if(r.price>1e12)px.style.color='var(--bad)';t.appendChild(px);
+        t.appendChild(el('td','num',usd(r.quoteHeld)));
+        t.appendChild(el('td','num',num(r.tick)));
+        const w=el('td');const a=el('a',null,r.pool.slice(0,10)+'…');
+        a.href=M.CHAINS.base.explorer+'/address/'+r.pool;a.target='_blank';w.appendChild(a);
+        r.reasons.forEach(x=>w.appendChild(el('div','why',x)));
+        t.appendChild(w);body.appendChild(t);});
+      tb.appendChild(body);bx.appendChild(tb);out.appendChild(bx);
+    });
+  }catch(e){
+    out.innerHTML='';
+    out.appendChild(el('div','note','The scan could not complete: '+e.message+
+      '. Nothing is reported rather than a partial count, because a short scan reads as a clean market.'));
+  } finally{btn.disabled=false;btn.textContent='Scan Uniswap v3 on Base';}
+};
+
+// Progressive reveal over [data-step] items. The recorder walks it one step at a
+// time so a narration cue never talks about a number that is not on screen yet.
+// With no recorder attached nothing calls it, and everything renders at once.
+window.setReveal=(k,scope='body')=>{
+  document.querySelectorAll(`${scope} [data-step]`).forEach(elm=>{
+    elm.style.visibility = Number(elm.dataset.step)<=k ? 'visible' : 'hidden';
+  });
+};
+
+// --- boot -------------------------------------------------------------------
+load();renderMandates();
+hud();setInterval(hud,15000);
+loadUniverse();
+</script>
+</body>
+</html>

@@ -6,92 +6,208 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mandate, copy trading that can't lie</title>
 <meta name="description" content="Strategies for tokenized stocks that anyone can follow and anyone can check. Live on Robinhood Chain.">
+<meta name="theme-color" content="#0a0c10">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mandate">
+<meta property="og:title" content="Mandate, copy trading that can't lie">
+<meta property="og:description" content="A strategist publishes a signed mandate, an agent executes it through real order types and refuses when it should. Every fill is public, so the track record is computed, not claimed.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mandate, copy trading that can't lie">
+<meta name="twitter:description" content="A strategist publishes a signed mandate, an agent executes it through real order types and refuses when it should. Every fill is public, so the track record is computed, not claimed.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%230a0c10'/%3E%3Cpath d='M14 46V18l9 16 9-16v28' fill='none' stroke='%23ff6a3d' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='47' cy='24' r='6' fill='%233ddc97'/%3E%3C/svg%3E">
 <style>
 :root{
-  --bg:#0a0c10;--panel:#12161c;--panel2:#171c24;--line:#232b36;
-  --ink:#e9eef5;--dim:#8a96a6;--faint:#5b6674;
-  --accent:#ff6a3d;--good:#3ddc97;--warn:#ffc857;--bad:#ff5470;
+  --bg:#080a0e;--bg2:#0c0f15;--panel:#12161c;--panel2:#171c24;--line:#222a35;--line2:#2c3644;
+  --ink:#eef2f8;--dim:#93a0b1;--faint:#616d7d;
+  --accent:#ff6a3d;--accent2:#ff8a5c;--good:#3ddc97;--warn:#ffc857;--bad:#ff5470;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  --shadow:0 1px 0 rgba(255,255,255,.02) inset,0 12px 34px -18px rgba(0,0,0,.7);
+  --glow:0 0 0 1px rgba(255,106,61,.35),0 10px 40px -12px rgba(255,106,61,.35);
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);
- font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
-a{color:var(--accent)}
-header{border-bottom:1px solid var(--line);padding:16px 24px;display:flex;
- align-items:baseline;gap:16px;flex-wrap:wrap;background:var(--panel)}
-h1{margin:0;font-size:20px;letter-spacing:-.02em}h1 b{color:var(--accent)}
-.tag{color:var(--dim);font-size:14px}.sp{flex:1}
-#hud{font:11.5px/1.5 var(--mono);color:var(--faint);text-align:right}
+html{scroll-behavior:smooth}
+body{margin:0;color:var(--ink);font:15px/1.6 var(--sans);
+ background:
+   radial-gradient(1100px 520px at 78% -8%,rgba(255,106,61,.10),transparent 60%),
+   radial-gradient(900px 480px at 8% 4%,rgba(61,220,151,.06),transparent 55%),
+   var(--bg);
+ -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent2)}
+::selection{background:rgba(255,106,61,.28);color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#3a4657}
+
+/* header */
+header{position:relative;padding:20px 28px 18px;display:flex;align-items:center;gap:16px;
+ flex-wrap:wrap;background:linear-gradient(180deg,rgba(18,22,28,.9),rgba(10,12,16,.6));
+ border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;flex-shrink:0;border-radius:9px;
+ background:linear-gradient(150deg,#1b2027,#0e1116);border:1px solid var(--line2);
+ display:grid;place-items:center;box-shadow:var(--shadow)}
+.logo svg{width:22px;height:22px;display:block}
+h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1}
+h1 b{background:linear-gradient(92deg,var(--accent),var(--accent2));-webkit-background-clip:text;
+ background-clip:text;-webkit-text-fill-color:transparent}
+.tag{color:var(--dim);font-size:13.5px;letter-spacing:.01em}
+.sp{flex:1}
+#hud{font:11px/1.55 var(--mono);color:var(--faint);text-align:right;
+ padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(12,15,21,.6)}
 #hud .on{color:var(--good)}#hud .off{color:var(--warn)}
-nav{display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--line);
- background:var(--panel);overflow-x:auto}
-nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--dim);
- padding:11px 15px;font-size:14px;cursor:pointer;white-space:nowrap}
-nav button:hover{color:var(--ink)}
-nav button.sel{color:var(--ink);border-bottom-color:var(--accent)}
-main{padding:24px;max-width:1220px}
-section{display:none}section.sel{display:block}
-.lede{color:var(--dim);max-width:72ch;margin:0 0 20px}
+#hud .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;
+ vertical-align:middle;background:var(--good);box-shadow:0 0 8px var(--good)}
+#hud .dot.off{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+
+/* nav */
+nav{position:sticky;top:0;z-index:20;display:flex;gap:4px;padding:6px 22px;
+ border-bottom:1px solid var(--line);overflow-x:auto;
+ background:rgba(10,12,16,.82);backdrop-filter:blur(10px)}
+nav button{background:none;border:0;border-radius:8px;color:var(--dim);
+ padding:9px 14px;font:600 13.5px var(--sans);cursor:pointer;white-space:nowrap;
+ position:relative;transition:color .15s,background .15s}
+nav button:hover{color:var(--ink);background:rgba(255,255,255,.03)}
+nav button.sel{color:var(--ink)}
+nav button.sel::after{content:"";position:absolute;left:14px;right:14px;bottom:2px;height:2px;
+ border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+
+main{padding:30px 28px 8px;max-width:1200px;margin:0 auto}
+section{display:none;animation:fade .32s ease}
+section.sel{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){section,section.sel{animation:none}html{scroll-behavior:auto}}
+
+/* hero (how it works) */
+.hero{position:relative;border:1px solid var(--line);border-radius:16px;padding:34px 30px;
+ margin-bottom:22px;overflow:hidden;
+ background:linear-gradient(160deg,rgba(23,28,36,.9),rgba(12,15,21,.9))}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+ background:radial-gradient(600px 240px at 88% -20%,rgba(255,106,61,.16),transparent 60%)}
+.hero h2{position:relative;margin:0 0 10px;font-size:30px;line-height:1.15;letter-spacing:-.025em;font-weight:750}
+.hero h2 .g{background:linear-gradient(92deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{position:relative;color:var(--dim);max-width:70ch;margin:0;font-size:15.5px}
+
+.lede{color:var(--dim);max-width:74ch;margin:0 0 22px;font-size:15px}
 .lede strong{color:var(--ink);font-weight:600}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:10px;margin-bottom:22px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
-.card .n{font:600 24px/1.2 var(--mono);letter-spacing:-.02em}
-.card .l{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;margin-top:4px}
+
+/* stat cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.card{position:relative;background:linear-gradient(180deg,var(--panel2),var(--panel));
+ border:1px solid var(--line);border-radius:12px;padding:15px 16px;box-shadow:var(--shadow);
+ transition:transform .18s,border-color .18s}
+.card:hover{transform:translateY(-2px);border-color:var(--line2)}
+.card::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;
+ background:linear-gradient(180deg,var(--accent),var(--accent2));opacity:.9}
+.card.good::before{background:linear-gradient(180deg,var(--good),#2bbf82)}
+.card.warn::before{background:linear-gradient(180deg,var(--warn),#e0ab3c)}
+.card.bad::before{background:linear-gradient(180deg,var(--bad),#e03e5e)}
+.card .n{font:700 26px/1.15 var(--mono);letter-spacing:-.03em;padding-left:6px}
+.card .l{color:var(--faint);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;margin-top:5px;padding-left:6px}
 .card.bad .n{color:var(--bad)}.card.good .n{color:var(--good)}.card.warn .n{color:var(--warn)}
+
+/* tables */
 table{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
-th{text-align:left;color:var(--faint);font-weight:500;font-size:10.5px;letter-spacing:.06em;
- text-transform:uppercase;padding:8px 14px;border-bottom:1px solid var(--line)}
-td{padding:8px 14px;border-bottom:1px solid #1a2028;vertical-align:top}
-tr:last-child td{border-bottom:0}.num{text-align:right}
-.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;
- margin-bottom:14px;overflow:hidden}
-.box>h3{margin:0;padding:12px 15px;font-size:14px;display:flex;gap:9px;align-items:baseline;
- border-bottom:1px solid var(--line);background:var(--panel2)}
-.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;letter-spacing:.04em}
-.live,.ok{background:rgba(61,220,151,.13);color:var(--good)}
-.thin,.warnp{background:rgba(255,200,87,.13);color:var(--warn)}
-.dead,.nope{background:rgba(255,84,112,.13);color:var(--bad)}
-.trapped{background:rgba(255,84,112,.24);color:#ff8095}
-.why{color:var(--faint);font-size:11px;font-family:inherit;line-height:1.5;margin-top:3px}
-.why::before{content:"! ";color:var(--bad)}
-button.go{background:var(--accent);color:#140f0c;border:0;border-radius:7px;
- padding:9px 17px;font-weight:600;font-size:14px;cursor:pointer}
-button.go:hover{filter:brightness(1.1)}button.go:disabled{opacity:.45;cursor:default}
-button.alt{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+th{text-align:left;color:var(--faint);font-weight:600;font-size:10px;letter-spacing:.09em;
+ text-transform:uppercase;padding:10px 15px;border-bottom:1px solid var(--line);
+ background:var(--panel2);position:sticky;top:0}
+td{padding:9px 15px;border-bottom:1px solid rgba(255,255,255,.045);vertical-align:top}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:rgba(255,255,255,.025)}
+tr:last-child td{border-bottom:0}.num{text-align:right;font-variant-numeric:tabular-nums}
+
+.box{background:var(--panel);border:1px solid var(--line);border-radius:13px;
+ margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow)}
+.box>h3{margin:0;padding:13px 16px;font-size:14px;font-weight:650;display:flex;gap:9px;align-items:baseline;
+ border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--panel2),rgba(23,28,36,.4))}
+
+/* pills */
+.pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;
+ letter-spacing:.05em;border:1px solid transparent}
+.live,.ok{background:rgba(61,220,151,.12);color:var(--good);border-color:rgba(61,220,151,.28)}
+.thin,.warnp{background:rgba(255,200,87,.12);color:var(--warn);border-color:rgba(255,200,87,.28)}
+.dead,.nope{background:rgba(255,84,112,.12);color:var(--bad);border-color:rgba(255,84,112,.28)}
+.trapped{background:rgba(255,84,112,.22);color:#ff8095;border-color:rgba(255,84,112,.4)}
+.why{color:var(--faint);font-size:11px;font-family:var(--sans);line-height:1.5;margin-top:4px}
+.why::before{content:"⚠ ";color:var(--bad)}
+
+/* buttons */
+button.go{background:linear-gradient(180deg,var(--accent2),var(--accent));color:#160f0b;border:0;
+ border-radius:9px;padding:10px 18px;font-weight:700;font-size:14px;cursor:pointer;
+ box-shadow:0 6px 18px -8px rgba(255,106,61,.7);transition:transform .14s,box-shadow .14s,filter .14s}
+button.go:hover{transform:translateY(-1px);box-shadow:0 10px 24px -8px rgba(255,106,61,.8);filter:brightness(1.04)}
+button.go:active{transform:translateY(0)}
+button.go:disabled{opacity:.45;cursor:default;box-shadow:none;transform:none}
+button.alt{background:var(--panel2);color:var(--ink);border:1px solid var(--line2);box-shadow:none}
+button.alt:hover{border-color:var(--accent);box-shadow:none;filter:none}
+
+/* inputs */
 input,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
- border-radius:7px;padding:9px 11px;font:13.5px var(--mono);width:100%}
-label{display:block;font-size:10.5px;color:var(--faint);text-transform:uppercase;
- letter-spacing:.08em;margin:0 0 5px}
-.row{display:flex;gap:11px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
-.row>div{flex:1;min-width:125px}
-pre{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px;
- overflow:auto;font:11.5px/1.55 var(--mono);color:var(--dim);max-height:420px;white-space:pre-wrap;word-break:break-word}
-.step{display:flex;gap:10px;padding:10px 13px;border:1px solid var(--line);
- border-radius:8px;margin-bottom:6px;background:var(--panel);align-items:flex-start}
-.step .mk{font:600 10.5px var(--mono);padding:2px 7px;border-radius:5px;flex-shrink:0;margin-top:2px}
+ border-radius:9px;padding:10px 12px;font:13px var(--mono);width:100%;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,106,61,.16)}
+label{display:block;font-size:10px;color:var(--faint);text-transform:uppercase;
+ letter-spacing:.09em;margin:0 0 6px;font-weight:600}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:18px}
+.row>div{flex:1;min-width:130px}
+
+pre{background:linear-gradient(180deg,#0c0f15,var(--panel));border:1px solid var(--line);border-radius:11px;
+ padding:15px 16px;overflow:auto;font:11.5px/1.6 var(--mono);color:var(--dim);max-height:420px;
+ white-space:pre-wrap;word-break:break-word;box-shadow:var(--shadow)}
+
+/* gate steps */
+.step{display:flex;gap:12px;padding:12px 14px;border:1px solid var(--line);
+ border-radius:11px;margin-bottom:8px;background:var(--panel);align-items:flex-start;
+ box-shadow:var(--shadow)}
+.step.y{border-left:3px solid var(--good)}
+.step.n{border-left:3px solid var(--bad)}
+.step .mk{font:700 10px/1 var(--mono);padding:4px 8px;border-radius:6px;flex-shrink:0;margin-top:1px;letter-spacing:.05em}
 .step.y .mk{background:rgba(61,220,151,.14);color:var(--good)}
 .step.n .mk{background:rgba(255,84,112,.14);color:var(--bad)}
-.step .nm{font:600 12.5px var(--mono);width:108px;flex-shrink:0}
-.step .dt{color:var(--dim);font-size:13px}
-.mid{font-size:12px;color:var(--faint);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.09em}
-.empty{color:var(--faint);padding:24px;text-align:center;border:1px dashed var(--line);border-radius:9px}
-.note{border-left:2px solid var(--accent);padding:9px 13px;color:var(--dim);
- background:var(--panel);font-size:13px;margin:14px 0;border-radius:0 7px 7px 0}
+.step .nm{font:650 12.5px var(--mono);width:112px;flex-shrink:0}
+.step .dt{color:var(--dim);font-size:13px;line-height:1.5}
+
+.mid{font-size:11px;color:var(--faint);margin:24px 0 10px;text-transform:uppercase;
+ letter-spacing:.11em;font-weight:700;display:flex;align-items:center;gap:10px}
+.mid::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.empty{color:var(--faint);padding:28px;text-align:center;border:1px dashed var(--line2);border-radius:12px;
+ background:rgba(255,255,255,.012);font-size:13.5px}
+
+.note{border-left:3px solid var(--accent);padding:11px 15px;color:var(--dim);
+ background:linear-gradient(90deg,rgba(255,106,61,.06),rgba(255,106,61,0));
+ font-size:13px;margin:14px 0;border-radius:0 9px 9px 0;line-height:1.55}
 .note b{color:var(--ink)}
-.mand{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:15px;margin-bottom:10px}
-.mand h4{margin:0 0 3px;font-size:15px}
+
+.mand{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+ border-radius:13px;padding:16px 17px;margin-bottom:11px;box-shadow:var(--shadow);transition:border-color .16s}
+.mand:hover{border-color:var(--line2)}
+.mand h4{margin:0 0 4px;font-size:15.5px;font-weight:650}
 .mand .id{font:10.5px var(--mono);color:var(--faint);word-break:break-all}
-.mand .th{color:var(--dim);font-size:13px;margin:8px 0}
+.mand .th{color:var(--dim);font-size:13px;margin:9px 0}
 .mand .legs{font:11.5px var(--mono);color:var(--accent)}
-footer{color:var(--faint);font-size:12px;padding:28px 24px;border-top:1px solid var(--line);margin-top:36px}
-.bar{height:5px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:7px 0}
-.bar>i{display:block;height:100%;background:var(--accent)}
+
+footer{color:var(--faint);font-size:12px;padding:30px 28px;border-top:1px solid var(--line);
+ margin-top:44px;max-width:1200px;margin-left:auto;margin-right:auto;line-height:1.7}
+
+.bar{height:6px;background:var(--panel2);border-radius:4px;overflow:hidden;margin:9px 0;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));
+ transition:width .35s ease;box-shadow:0 0 12px rgba(255,106,61,.5)}
+
+@media (max-width:640px){
+  main{padding:22px 16px 8px}header{padding:16px}nav{padding:6px 10px}
+  .hero{padding:24px 18px}.hero h2{font-size:24px}
+}
 </style>
 </head>
 <body>
 <header>
-  <h1><b>Mandate</b></h1>
-  <span class="tag">Copy trading that can't lie.</span>
+  <div class="brand">
+    <span class="logo" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M14 46V18l9 16 9-16v28" fill="none" stroke="#ff6a3d" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="47" cy="24" r="6" fill="#3ddc97"/></svg></span>
+    <div>
+      <h1><b>Mandate</b></h1>
+      <div class="tag">Copy trading that can't lie.</div>
+    </div>
+  </div>
   <span class="sp"></span>
   <div id="hud">starting…</div>
 </header>
@@ -204,6 +320,12 @@ footer{color:var(--faint);font-size:12px;padding:28px 24px;border-top:1px solid 
 </section>
 
 <section id="about">
+  <div class="hero">
+    <h2>Copy trading, <span class="g">computed not claimed</span>.</h2>
+    <p>A strategist publishes a signed mandate. Followers subscribe with their own wallet. An
+    agent executes it through real order types, refuses when it should, then places the stops
+    it promised. Every fill is a public log, so the track record cannot be inflated by anyone.</p>
+  </div>
   <div class="note"><b>The problem.</b> Copy trading runs on numbers you have to take someone's
   word for. The platform holds your money, the star trader reports their own returns, you
   find out afterwards.</div>
@@ -225,7 +347,7 @@ Robinhood Chain, Base and the Definitive Flash API from your own browser.
   python3 scripts/verify_addresses.py    every address, off chain, live
   python3 scripts/scan_market.py         the ghost pool scan
   ./scripts/cross_check_id.sh            browser and python agree on a mandate id
-  python3 -m unittest discover -s tests  62 offline tests
+  python3 -m unittest discover -s tests  86 offline tests
 
 No API key needed.</pre>
 </section>
@@ -263,7 +385,8 @@ async function hud(){
   const s=M.sessionState();
   let blk='';
   try{blk=`rh block ${Number(await M.rpcValue('robinhood','eth_blockNumber',[])).toLocaleString()}`}catch{blk='rpc unreachable'}
-  $('#hud').innerHTML=`${blk} &middot; chain 4663<br>underlying market `+
+  $('#hud').innerHTML=`${blk} &middot; chain 4663<br>`+
+    `<span class="dot ${s.open?'':'off'}"></span>underlying market `+
     `<span class="${s.open?'on':'off'}">${s.open?'OPEN':'CLOSED'}</span> &middot; ${s.reason}`;
 }
 

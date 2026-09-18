@@ -1,12 +1,43 @@
-# Mandate
+<div align="center">
 
-**Copy trading that can't lie.**
+<h1>Mandate</h1>
 
-A strategist publishes a signed mandate. Followers subscribe with their own wallet. An agent
+<h3>Copy trading that can't lie.</h3>
+
+<p>A strategist publishes a signed mandate. Followers subscribe with their own wallet. An agent
 executes it through real order types, refuses when it should, then places the stops it
-promised. Every fill is public, so the track record is **computed, not claimed**.
+promised. Every fill is public, so the track record is <b>computed, not claimed</b>.</p>
 
-Built for Runtime Agent Week. Live on Robinhood Chain and Base.
+<p>
+<a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-ff6a3d"></a>
+<a href="tests/"><img alt="Python tests" src="https://img.shields.io/badge/python%20tests-86%20passing-3ddc97"></a>
+<a href="contracts/test/"><img alt="Solidity" src="https://img.shields.io/badge/solidity-24%20unit%20%2B%205%20fork%20%2B%202%20fuzz-3ddc97"></a>
+<a href="web/"><img alt="Backend" src="https://img.shields.io/badge/backend-none-8a96a6"></a>
+<a href="#integrations"><img alt="Chains" src="https://img.shields.io/badge/chains-Robinhood%20%C2%B7%20Base-ff6a3d"></a>
+</p>
+
+<p>Built for <b>Runtime Agent Week</b>. Live on <b>Robinhood Chain</b> and <b>Base</b>.</p>
+
+</div>
+
+---
+
+> **One run, live, $5,000 across three legs:** 12 entries quoted and gated at 18 to 38bps
+> against a 50bps ceiling, depth cover 2,316x to 8,420x, then 6 protective exits resting at
+> the venue, 100% of legs carrying a live stop. Every one a signable EIP-712 payload. Nothing
+> was broadcast. No key is held anywhere in this repo.
+
+## Contents
+
+- [Why this exists](#why-this-exists)
+- [What the market actually looks like](#what-the-market-actually-looks-like)
+- [Run it](#run-it)
+- [The nine gates](#the-nine-gates)
+- [$MANDATE](#mandate)
+- [Integrations](#integrations)
+- [What is verified, what is not](#what-is-verified-what-is-not)
+- [Known gaps](#known-gaps)
+- [Licence](#licence)
 
 ---
 
